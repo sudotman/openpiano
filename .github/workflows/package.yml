@@ -1,0 +1,48 @@
+name: Test and package OpenPiano
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openpiano-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-web-app:
+    name: Build web package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build production app
+        run: npm run build
+
+      - name: Upload packaged static app
+        uses: actions/upload-artifact@v4
+        with:
+          name: openpiano-web-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30

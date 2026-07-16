@@ -7,13 +7,18 @@ OpenPiano is a browser-based piano teacher built around real MIDI input. It comb
 - 6 curriculum units and 18 linked lessons, from first-note orientation to advanced voicing and recital practice
 - 6 playable original/public-domain arrangements with right- and left-hand parts
 - Falling-note practice aligned precisely to a responsive piano keyboard
+- Three practice views: falling tiles, standard grand-staff notation, or both together
 - **Wait mode**, which holds the timeline until every required note in a chord is played
 - **Flow mode**, with live timing, misses, accuracy, and streak scoring
 - Live Web MIDI note-on/note-off input, velocity tracking, hot-plug detection, and device selection
 - On-screen playable keys for trying every interaction without hardware
 - Piano-like Web Audio feedback with polyphony
 - MIDI file import with track selection, metadata cleanup, hand inference, and clear validation errors
-- Persistent imported songs, lesson completion, and recent practice history in local storage
+- A Yamaha PSR-E383 preset (61 keys, C2–C7), common 49/76/88-key presets, custom endpoints, and two-note MIDI calibration
+- Password-free local learner profiles with separate songs, lesson progress, settings, theory scores, practice history, switching, renaming, and non-destructive logout
+- An interactive Theory Lab for keyboard geography, staff reading, pulse training, and major/minor scale patterns
+- Real practice totals, accuracy, streaks, staff-note mastery, and session history—no placeholder progress data
+- On-demand loading for the notation engine so the core curriculum and tiles view stay quick
 - Responsive desktop and mobile layouts
 
 ## Run locally
@@ -32,13 +37,20 @@ Open the local URL printed by Vite. For Web MIDI, use a current Chromium-based b
 3. Open **Setup** or press **Connect keyboard** in OpenPiano.
 4. Choose **Enable MIDI access** and approve the browser prompt.
 5. Select the Yamaha input if more than one MIDI device is listed.
-6. Play a key and confirm that it appears in the live note monitor.
+6. Choose the **Yamaha PSR-E383** instrument profile, or press **Calibrate** and play the lowest then highest key.
+7. Play a key and confirm that it appears in the live note monitor.
 
 The app responds to standard MIDI note-on and note-off messages. No MIDI connection is required to explore it—the on-screen keyboard goes through the same scoring path.
 
 ## Import a song
 
 Open **Songs**, press **Import MIDI**, and choose a `.mid` or `.midi` file. OpenPiano selects useful pitched/piano tracks, ignores percussion, normalizes the start time, and opens the imported arrangement directly in the practice studio.
+
+Inside the studio, switch between **Tiles**, **Score**, and **Both** without restarting the session. Imported MIDI is quantized into readable grand-staff notation automatically; tiles mode remains available if an unusual file cannot be engraved.
+
+## Local learner profiles
+
+Press the learner card at the bottom of the sidebar to add, rename, switch, or leave a profile. There is no password and no server account: all data stays in this browser's local storage. Logging out returns to the learner picker without deleting anything. Clearing browser site data will remove local profiles, so this is intentionally a single-device setup for now.
 
 ## Verify
 
@@ -47,7 +59,9 @@ npm test
 npm run build
 ```
 
-The test suite covers curriculum integrity, 88-key geometry, note naming, and valid/invalid MIDI parsing.
+The test suite covers curriculum integrity, keyboard presets and calibration ranges, local profile migration/isolation, notation quantization, theory utilities, key geometry, and valid/invalid MIDI parsing.
+
+Every pull request, push to `main`, and `v*` tag also runs `.github/workflows/package.yml`. The workflow tests and builds with Node.js 22, then publishes the production `dist/` directory as a 30-day GitHub Actions artifact.
 
 ## Main modules
 
@@ -57,4 +71,8 @@ The test suite covers curriculum integrity, 88-key geometry, note naming, and va
 - `src/components/PracticeStudio.tsx` — timing, wait/flow modes, scoring, and results
 - `src/components/NoteHighway.tsx` — aligned falling-note renderer
 - `src/components/PianoKeyboard.tsx` — accurate interactive key geometry
+- `src/components/SheetMusic.tsx` — live VexFlow grand staff, playhead, and note-result coloring
+- `src/components/TheoryLab.tsx` — interactive note, staff, rhythm, and key-signature practice
+- `src/components/KeyboardRangeSetup.tsx` — instrument presets and live two-note calibration
+- `src/lib/localProfiles.ts` — isolated password-free learner storage
 - `src/data/curriculum.ts` — lessons, units, and built-in arrangements

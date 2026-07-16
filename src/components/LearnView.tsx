@@ -14,6 +14,8 @@ import type { Lesson } from '../types'
 
 interface LearnViewProps {
   completedLessonIds: string[]
+  practiceMinutes?: number
+  averageAccuracy?: number
   onOpenLesson: (lesson: Lesson) => void
   onResume: () => void
 }
@@ -27,9 +29,11 @@ function lessonState(lesson: Lesson, completedLessonIds: string[], index: number
   return 'locked'
 }
 
-export function LearnView({ completedLessonIds, onOpenLesson, onResume }: LearnViewProps) {
+export function LearnView({ completedLessonIds, practiceMinutes = 0, averageAccuracy = 0, onOpenLesson, onResume }: LearnViewProps) {
   const completed = completedLessonIds.length
   const total = lessons.length
+  const nextLesson = lessons.find((lesson) => !completedLessonIds.includes(lesson.id)) ?? lessons[lessons.length - 1]
+  const courseProgress = total ? Math.round((completed / total) * 100) : 0
 
   return (
     <motion.div
@@ -41,8 +45,8 @@ export function LearnView({ completedLessonIds, onOpenLesson, onResume }: LearnV
       <section className="continue-stage">
         <div className="continue-copy">
           <div className="section-kicker"><Sparkles size={14} /> Continue learning</div>
-          <h2>Find your way<br />around the keys.</h2>
-          <p>Lesson 2 · The five-finger position</p>
+          <h2>{completed ? <>Keep moving<br />one phrase forward.</> : <>Start calmly.<br />Play your first pulse.</>}</h2>
+          <p>Lesson {nextLesson?.order ?? 1} · {nextLesson?.title ?? 'Your first lesson'}</p>
           <button className="primary-action" onClick={onResume}>
             <Play size={17} fill="currentColor" /> Resume lesson
           </button>
@@ -59,10 +63,10 @@ export function LearnView({ completedLessonIds, onOpenLesson, onResume }: LearnV
           <div className="lesson-progress-ring">
             <svg viewBox="0 0 80 80">
               <circle cx="40" cy="40" r="34" />
-              <circle cx="40" cy="40" r="34" pathLength="100" strokeDasharray="42 100" />
+              <circle cx="40" cy="40" r="34" pathLength="100" strokeDasharray={`${courseProgress} 100`} />
             </svg>
-            <strong>42%</strong>
-            <span>lesson</span>
+            <strong>{courseProgress}%</strong>
+            <span>course</span>
           </div>
         </div>
       </section>
@@ -74,8 +78,8 @@ export function LearnView({ completedLessonIds, onOpenLesson, onResume }: LearnV
         </div>
         <div className="overview-stats">
           <div><strong>{completed}<small> / {total}</small></strong><span>lessons complete</span></div>
-          <div><strong>18<small> min</small></strong><span>this week</span></div>
-          <div><strong>86<small>%</small></strong><span>note accuracy</span></div>
+          <div><strong>{practiceMinutes}<small> min</small></strong><span>this week</span></div>
+          <div><strong>{averageAccuracy}<small>%</small></strong><span>note accuracy</span></div>
         </div>
       </section>
 

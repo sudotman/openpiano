@@ -1,0 +1,516 @@
+.sheet-music,
+.single-note-staff {
+  --sheet-paper: #f4efe3;
+  --sheet-paper-deep: #ece4d4;
+  --sheet-ink: #302b25;
+  --sheet-muted: #81776b;
+  --sheet-rule: rgba(75, 65, 53, 0.16);
+  --sheet-current: #a75d18;
+  --sheet-hit: #27745d;
+  --sheet-missed: #b34b45;
+  color: var(--sheet-ink);
+  font-family: "Avenir Next", Avenir, Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.sheet-music {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(65, 56, 45, 0.22);
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(92, 70, 42, 0.028), transparent 22%, rgba(255, 255, 255, 0.2) 72%, transparent),
+    var(--sheet-paper);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.22),
+    inset 0 1px rgba(255, 255, 255, 0.68);
+  isolation: isolate;
+}
+
+.sheet-music::before,
+.single-note-staff::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 18%, rgba(73, 56, 35, 0.035) 0 0.7px, transparent 0.8px),
+    radial-gradient(circle at 78% 66%, rgba(73, 56, 35, 0.026) 0 0.6px, transparent 0.7px);
+  background-size: 9px 11px, 13px 15px;
+  content: "";
+  pointer-events: none;
+}
+
+.sheet-music__header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  min-height: 74px;
+  padding: 15px 19px 13px;
+  border-bottom: 1px solid var(--sheet-rule);
+  background: rgba(255, 252, 244, 0.38);
+}
+
+.sheet-music__identity {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 3px 10px;
+}
+
+.sheet-music__identity > span {
+  grid-column: 1 / -1;
+  color: var(--sheet-current);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.sheet-music__identity > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sheet-ink);
+  font-family: Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-music__identity > small {
+  overflow: hidden;
+  color: var(--sheet-muted);
+  font-size: 9px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-music__meta {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 17px;
+  margin: 0;
+}
+
+.sheet-music__meta > div {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.sheet-music__meta dt {
+  color: #9a8e80;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.sheet-music__meta dd {
+  margin: 0;
+  color: #51483f;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.sheet-music__bar-range {
+  min-width: 86px;
+  padding-left: 15px;
+  border-left: 1px solid var(--sheet-rule);
+}
+
+.sheet-music__canvas {
+  position: relative;
+  min-height: 238px;
+  overflow: hidden;
+}
+
+.sheet-music--compact .sheet-music__canvas {
+  min-height: 202px;
+}
+
+.sheet-music__staff-stack {
+  position: relative;
+  min-height: inherit;
+  overflow: hidden;
+}
+
+.sheet-music__render {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: inherit;
+}
+
+.sheet-music__render--current {
+  z-index: 1;
+}
+
+.sheet-music__render--outgoing {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sheet-music__render > svg,
+.single-note-staff__render > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.sheet-music__render .op-sheet-note--current,
+.single-note-staff__render .op-sheet-note--current {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sheet-note-breathe 1.15s ease-in-out infinite;
+  filter: drop-shadow(0 0 2px rgba(167, 93, 24, 0.32));
+}
+
+.sheet-music__render .op-sheet-note--hit {
+  opacity: 0.88;
+}
+
+.sheet-music__render .op-sheet-note--missed {
+  filter: drop-shadow(0 0 1px rgba(179, 75, 69, 0.24));
+}
+
+.sheet-music__playhead {
+  position: absolute;
+  z-index: 4;
+  top: 10px;
+  bottom: 9px;
+  left: 0;
+  width: 1px;
+  border-radius: 1px;
+  background: linear-gradient(to bottom, transparent, rgba(167, 93, 24, 0.68) 13%, rgba(167, 93, 24, 0.68) 87%, transparent);
+  box-shadow: 0 0 9px rgba(167, 93, 24, 0.18);
+  opacity: 0.82;
+  pointer-events: none;
+  transform: translate3d(var(--sheet-playhead-x, 14%), 0, 0);
+  will-change: transform;
+}
+
+.sheet-music__playhead::before {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border: 1px solid rgba(255, 250, 239, 0.72);
+  background: var(--sheet-current);
+  box-shadow: 0 1px 3px rgba(62, 38, 15, 0.25);
+  content: "";
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.sheet-music__canvas.is-page-turning-forward .sheet-music__render--current {
+  animation: sheet-page-in-forward 380ms cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+
+.sheet-music__canvas.is-page-turning-forward .sheet-music__render--outgoing {
+  animation: sheet-page-out-forward 380ms cubic-bezier(0.4, 0, 0.3, 1) both;
+}
+
+.sheet-music__canvas.is-page-turning-back .sheet-music__render--current {
+  animation: sheet-page-in-back 380ms cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+
+.sheet-music__canvas.is-page-turning-back .sheet-music__render--outgoing {
+  animation: sheet-page-out-back 380ms cubic-bezier(0.4, 0, 0.3, 1) both;
+}
+
+.sheet-music__canvas.is-page-turning-forward .sheet-music__playhead,
+.sheet-music__canvas.is-page-turning-back .sheet-music__playhead {
+  animation: sheet-playhead-reveal 380ms ease-out both;
+}
+
+@keyframes sheet-page-in-forward {
+  from { opacity: 0.2; transform: translate3d(24px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes sheet-page-out-forward {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to { opacity: 0; transform: translate3d(-28px, 0, 0); }
+}
+
+@keyframes sheet-page-in-back {
+  from { opacity: 0.2; transform: translate3d(-24px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes sheet-page-out-back {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to { opacity: 0; transform: translate3d(28px, 0, 0); }
+}
+
+@keyframes sheet-playhead-reveal {
+  from { opacity: 0; }
+  45% { opacity: 0; }
+  to { opacity: 0.82; }
+}
+
+.sheet-music__legend {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 34px;
+  padding: 7px 18px;
+  border-top: 1px solid var(--sheet-rule);
+  color: #756b60;
+  font-size: 8px;
+  font-weight: 650;
+  background: rgba(229, 219, 201, 0.38);
+}
+
+.sheet-music__legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.sheet-music__legend > span > i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sheet-muted);
+}
+
+.sheet-music__legend > span > i.current {
+  background: var(--sheet-current);
+  box-shadow: 0 0 0 2px rgba(167, 93, 24, 0.12);
+}
+
+.sheet-music__legend > span > i.hit {
+  background: var(--sheet-hit);
+}
+
+.sheet-music__legend > span > i.missed {
+  background: var(--sheet-missed);
+}
+
+.sheet-music__legend > small {
+  margin-left: auto;
+  color: #9a8f82;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sheet-music__empty {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  padding: 28px;
+  text-align: center;
+}
+
+.sheet-music__empty > i {
+  width: min(420px, 74%);
+  height: 58px;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 9px, rgba(85, 75, 63, 0.26) 9px 10px),
+    linear-gradient(to right, transparent, rgba(167, 93, 24, 0.08), transparent);
+  opacity: 0.72;
+  mask-image: linear-gradient(to right, transparent, black 18%, black 82%, transparent);
+}
+
+.sheet-music__empty > div {
+  display: grid;
+  gap: 4px;
+}
+
+.sheet-music__empty strong {
+  font-family: Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.sheet-music__empty span {
+  color: var(--sheet-muted);
+  font-size: 9px;
+}
+
+.sheet-music__empty--error > i {
+  background: repeating-linear-gradient(to bottom, transparent 0 9px, rgba(179, 75, 69, 0.26) 9px 10px);
+}
+
+.sheet-music--compact .sheet-music__header {
+  min-height: 57px;
+  padding: 10px 14px;
+}
+
+.sheet-music--compact .sheet-music__identity > strong {
+  font-size: 15px;
+}
+
+.sheet-music--compact .sheet-music__identity > span,
+.sheet-music--compact .sheet-music__meta dt {
+  font-size: 6.5px;
+}
+
+.sheet-music--compact .sheet-music__meta {
+  gap: 12px;
+}
+
+.sheet-music--compact .sheet-music__meta dd {
+  font-size: 8px;
+}
+
+.sheet-music--compact .sheet-music__legend {
+  min-height: 29px;
+  padding-block: 5px;
+}
+
+.single-note-staff {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid rgba(65, 56, 45, 0.2);
+  border-radius: 10px;
+  background: var(--sheet-paper);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.62);
+  isolation: isolate;
+}
+
+.single-note-staff__render {
+  width: 100%;
+  min-height: 138px;
+}
+
+.single-note-staff--compact .single-note-staff__render {
+  min-height: 112px;
+}
+
+.single-note-staff figcaption {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--sheet-rule);
+  background: rgba(229, 219, 201, 0.36);
+}
+
+.single-note-staff figcaption strong {
+  font-family: Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.single-note-staff figcaption span {
+  color: var(--sheet-current);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.single-note-staff figcaption small {
+  margin-left: auto;
+  color: #8d8276;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.single-note-staff__fallback {
+  position: absolute;
+  inset: 0 0 34px;
+  display: grid;
+  place-items: center;
+  color: var(--sheet-current);
+  font-family: Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif;
+  font-size: 32px;
+  font-weight: 650;
+}
+
+@keyframes sheet-note-breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.78; transform: scale(1.035); }
+}
+
+@media (max-width: 680px) {
+  .sheet-music__header {
+    align-items: center;
+    gap: 15px;
+    min-height: 66px;
+    padding-inline: 14px;
+  }
+
+  .sheet-music__identity > small,
+  .sheet-music__meta > div:nth-child(3),
+  .sheet-music__bar-range dt {
+    display: none;
+  }
+
+  .sheet-music__meta {
+    gap: 10px;
+  }
+
+  .sheet-music__bar-range {
+    min-width: 0;
+    padding-left: 10px;
+  }
+
+  .sheet-music__legend {
+    gap: 10px;
+    padding-inline: 13px;
+  }
+}
+
+@media (max-width: 430px) {
+  .sheet-music__header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sheet-music__meta {
+    width: 100%;
+  }
+
+  .sheet-music__bar-range {
+    margin-left: auto;
+  }
+
+  .sheet-music__legend > small {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-music__render .op-sheet-note--current,
+  .single-note-staff__render .op-sheet-note--current {
+    animation: none;
+  }
+
+  .sheet-music__canvas.is-page-turning-forward .sheet-music__render,
+  .sheet-music__canvas.is-page-turning-back .sheet-music__render,
+  .sheet-music__canvas.is-page-turning-forward .sheet-music__playhead,
+  .sheet-music__canvas.is-page-turning-back .sheet-music__playhead {
+    animation: none;
+  }
+}

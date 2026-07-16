@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion'
-import { Cable, Check, ChevronDown, Keyboard, Music, SlidersHorizontal, Volume2 } from 'lucide-react'
+import { Cable, Check, ChevronDown, Music, SlidersHorizontal, Volume2 } from 'lucide-react'
+import type { KeyboardConfig } from '../lib/keyboardConfig'
+import { KeyboardRangeSetup } from './KeyboardRangeSetup'
 
 interface MidiDevice {
   id: string
@@ -15,8 +17,11 @@ interface SetupViewProps {
   devices: MidiDevice[]
   selectedDeviceId?: string
   error?: string
+  keyboardConfig: KeyboardConfig
+  lastMidiNote?: number
   onConnect: () => void
   onSelectDevice: (id: string) => void
+  onKeyboardConfigChange: (config: KeyboardConfig) => void
 }
 
 export function SetupView({
@@ -26,8 +31,11 @@ export function SetupView({
   devices,
   selectedDeviceId,
   error,
+  keyboardConfig,
+  lastMidiNote,
   onConnect,
   onSelectDevice,
+  onKeyboardConfigChange,
 }: SetupViewProps) {
   return (
     <motion.div className="setup-view" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -68,6 +76,16 @@ export function SetupView({
         </div>
       </section>
 
+      <section className="setup-sections keyboard-range-section">
+        <KeyboardRangeSetup
+          value={keyboardConfig}
+          onChange={onKeyboardConfigChange}
+          lastMidiNote={lastMidiNote}
+          isMidiConnected={connected}
+          onConnect={onConnect}
+        />
+      </section>
+
       <section className="setup-sections">
         <div className="setup-section-heading"><span>Practice preferences</span><h3>Make the studio yours</h3></div>
         <div className="preference-list">
@@ -86,11 +104,6 @@ export function SetupView({
             <span><strong>Wait mode by default</strong><small>The music pauses until you find the right key</small></span>
             <input type="checkbox" defaultChecked /><i className="toggle" />
           </label>
-          <div className="preference-row">
-            <span className="preference-icon"><Keyboard size={18} /></span>
-            <span><strong>Keyboard range</strong><small>Automatically follows the notes in each song</small></span>
-            <button className="text-select">Auto <ChevronDown size={14} /></button>
-          </div>
         </div>
       </section>
     </motion.div>

@@ -1,0 +1,353 @@
+.keyboard-range-setup {
+  color: var(--ink, #171a17);
+}
+
+.keyboard-range-heading {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line, rgba(23, 26, 23, .12));
+}
+
+.keyboard-range-heading__icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #202420;
+  color: var(--acid, #d9ff5b);
+}
+
+.keyboard-range-heading > span:nth-child(2) {
+  display: grid;
+  gap: 1px;
+}
+
+.keyboard-range-heading small,
+.keyboard-range-calibration__copy small {
+  color: #858a82;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 1.05px;
+  text-transform: uppercase;
+}
+
+.keyboard-range-heading strong {
+  font-size: 17px;
+  letter-spacing: -.4px;
+}
+
+.keyboard-range-heading output {
+  color: #747970;
+  font: 650 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.keyboard-range-layout {
+  display: grid;
+  grid-template-columns: minmax(330px, 1fr) minmax(300px, .9fr);
+  gap: 34px;
+}
+
+.keyboard-range-presets {
+  min-width: 0;
+}
+
+.keyboard-range-preset {
+  position: relative;
+  width: 100%;
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 9px 8px 9px 3px;
+  border: 0;
+  border-bottom: 1px solid var(--line, rgba(23, 26, 23, .12));
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: padding .16s ease, background .16s ease;
+}
+
+.keyboard-range-preset:hover {
+  padding-left: 8px;
+  background: rgba(255, 255, 255, .42);
+}
+
+.keyboard-range-preset.is-selected {
+  background: rgba(217, 255, 91, .12);
+}
+
+.keyboard-range-preset__indicator {
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #bdc0b8;
+  border-radius: 50%;
+  color: #171a17;
+}
+
+.is-selected .keyboard-range-preset__indicator {
+  border-color: var(--acid, #d9ff5b);
+  background: var(--acid, #d9ff5b);
+  box-shadow: 0 0 0 4px rgba(217, 255, 91, .15);
+}
+
+.keyboard-range-preset__copy,
+.keyboard-range-manual__choice > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.keyboard-range-preset__copy strong,
+.keyboard-range-manual__choice strong,
+.keyboard-range-calibration__copy strong {
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.keyboard-range-preset__copy small,
+.keyboard-range-manual__choice small {
+  color: #858a82;
+  font-size: 10px;
+}
+
+.keyboard-range-preset__tag {
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #252925;
+  color: var(--acid, #d9ff5b);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .65px;
+  text-transform: uppercase;
+}
+
+.keyboard-range-preset__count {
+  justify-self: end;
+  color: #8a8f87;
+  font: 650 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.keyboard-range-manual-column {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding-top: 18px;
+}
+
+.keyboard-range-manual {
+  border: 1px solid var(--line, rgba(23, 26, 23, .12));
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .25);
+  transition: border-color .18s ease, background .18s ease;
+}
+
+.keyboard-range-manual.is-selected {
+  border-color: rgba(104, 126, 31, .42);
+  background: rgba(255, 255, 255, .52);
+}
+
+.keyboard-range-manual__choice {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 11px;
+  align-items: center;
+  padding: 14px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.keyboard-range-selects {
+  display: grid;
+  grid-template-columns: 1fr 14px 1fr;
+  gap: 8px;
+  align-items: end;
+  padding: 0 14px 14px;
+}
+
+.keyboard-range-selects label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.keyboard-range-selects label > span {
+  color: #848980;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+
+.keyboard-range-selects select {
+  min-width: 0;
+  width: 100%;
+  height: 38px;
+  padding: 0 7px;
+  border: 1px solid var(--line, rgba(23, 26, 23, .12));
+  border-radius: 6px;
+  background: #f7f7f2;
+  color: #323631;
+  font: 650 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+}
+
+.keyboard-range-selects i {
+  height: 1px;
+  margin-bottom: 18px;
+  background: #aeb2aa;
+}
+
+.keyboard-range-calibration {
+  min-height: 104px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 15px;
+  border-radius: 10px;
+  background: #1b1f1b;
+  color: #f0f2ec;
+}
+
+.keyboard-range-calibration__scan {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .07);
+  color: var(--acid, #d9ff5b);
+}
+
+.keyboard-range-calibration.is-listening .keyboard-range-calibration__scan::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border: 1px solid rgba(217, 255, 91, .42);
+  border-radius: inherit;
+  animation: keyboard-range-pulse 1.4s ease-out infinite;
+}
+
+.keyboard-range-calibration__copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.keyboard-range-calibration__copy small {
+  color: #798078;
+}
+
+.keyboard-range-calibration__copy p {
+  margin: 1px 0 0;
+  color: #8e958e;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.keyboard-range-calibration__copy em {
+  margin-top: 4px;
+  color: #f1bd79;
+  font-size: 9px;
+  font-style: normal;
+}
+
+.keyboard-range-calibration__action {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--acid, #d9ff5b);
+  color: #171a17;
+  font-size: 9px;
+  font-weight: 780;
+  cursor: pointer;
+  transition: transform .16s ease, background .16s ease;
+}
+
+.keyboard-range-calibration__action:hover {
+  transform: translateY(-1px);
+  background: #e5ff87;
+}
+
+.keyboard-range-calibration__cancel {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 50%;
+  background: transparent;
+  color: #9ca29b;
+  cursor: pointer;
+}
+
+.keyboard-range-calibration__cancel:hover {
+  color: white;
+  border-color: rgba(255, 255, 255, .24);
+}
+
+@keyframes keyboard-range-pulse {
+  from { opacity: .7; transform: scale(.82); }
+  to { opacity: 0; transform: scale(1.25); }
+}
+
+@media (max-width: 760px) {
+  .keyboard-range-layout {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .keyboard-range-manual-column {
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 500px) {
+  .keyboard-range-heading {
+    grid-template-columns: 34px 1fr;
+  }
+
+  .keyboard-range-heading output {
+    grid-column: 2;
+  }
+
+  .keyboard-range-preset__tag {
+    display: none;
+  }
+
+  .keyboard-range-calibration {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .keyboard-range-calibration__action,
+  .keyboard-range-calibration__cancel {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keyboard-range-preset,
+  .keyboard-range-calibration__action {
+    transition: none;
+  }
+
+  .keyboard-range-calibration.is-listening .keyboard-range-calibration__scan::after {
+    animation: none;
+  }
+}

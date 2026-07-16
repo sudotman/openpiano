@@ -1,6 +1,6 @@
 .practice-studio {
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
   background: #090b0a;
   color: #f2f4ee;
   --studio-line: rgba(235, 242, 226, .12);
@@ -22,10 +22,12 @@
 .studio-progress { height: 2px; background: rgba(255,255,255,.04); }
 .studio-progress i { display: block; height: 100%; background: #d9ff5b; transition: width .12s linear; box-shadow: 0 0 12px rgba(217,255,91,.35); }
 .studio-stage { width: min(1440px, calc(100% - 34px)); margin: 0 auto; padding: 12px 0 13px; }
-.studio-toolbar { height: 41px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 18px; }
+.studio-toolbar { min-height: 41px; display: grid; grid-template-columns: auto 1fr auto auto; align-items: start; gap: 14px; }
 .segmented-control { justify-self: start; display: flex; padding: 2px; border: 1px solid var(--studio-line); border-radius: 7px; }
 .segmented-control button { height: 26px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: #707870; font-size: 9px; cursor: pointer; }
 .segmented-control button.active { background: #252a25; color: #e8ebe5; }
+.view-mode-control { justify-self: end; }
+.view-mode-control button { min-width: 42px; }
 .studio-live-stats { display: flex; align-items: center; gap: 19px; padding-top: 6px; color: #d5d9d2; }
 .studio-live-stats > span { display: flex; align-items: center; gap: 5px; font: 700 10px ui-monospace, monospace; }
 .studio-live-stats svg { color: #d9ff5b; }
@@ -34,8 +36,22 @@
 .hand-select, .speed-control { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #858d85; font-size: 9px; cursor: pointer; }
 .hand-select { justify-self: end; padding-top: 8px; }
 .hand-select:hover, .speed-control:hover { color: white; }
+.practice-visual { position: relative; }
 .highway-wrap { position: relative; }
 .highway-wrap .note-highway { --op-highway-height: clamp(300px, 47vh, 570px); border-radius: 9px 9px 0 0; border-bottom: 0; }
+.practice-visual--both { display: grid; grid-template-columns: 1fr; gap: 7px; }
+.practice-visual--both .highway-wrap .note-highway { --op-highway-height: clamp(90px, 11vh, 130px); border-radius: 7px 7px 0 0; }
+.practice-visual--both .sheet-music__header { min-height: 38px; padding: 6px 12px; align-items: center; }
+.practice-visual--both .sheet-music__identity > span,
+.practice-visual--both .sheet-music__meta dt,
+.practice-visual--both .sheet-music__bar-range,
+.practice-visual--both .sheet-music__legend { display: none; }
+.practice-visual--both .sheet-music__meta { gap: 9px; }
+.practice-visual--both .sheet-music__meta dd { font-size: 7.5px; }
+.practice-visual--both + .keyboard-wrap .piano-keyboard__rail { min-height: 1rem; }
+.practice-visual--both + .keyboard-wrap .piano-keyboard__keybed { block-size: 4rem; }
+.sheet-music-wrap { min-width: 0; }
+.score-loading { min-height: 260px; display: flex; align-items: center; justify-content: center; gap: 9px; border-radius: 9px; background: #ede9df; color: #777064; font-size: 10px; }
 .keyboard-wrap { margin-top: -1px; }
 .keyboard-wrap .piano-keyboard { border-radius: 0 0 9px 9px; box-shadow: 0 13px 30px rgba(0,0,0,.3); }
 .keyboard-wrap .piano-keyboard__rail { min-height: 1.45rem; }
@@ -87,10 +103,14 @@
   .studio-title { padding: 0 10px; }
   .studio-title strong { max-width: 190px; }
   .studio-stage { width: calc(100% - 14px); padding-top: 7px; }
-  .studio-toolbar { height: 38px; grid-template-columns: 1fr auto; }
+  .studio-toolbar { min-height: 72px; grid-template-columns: 1fr auto; gap: 6px 10px; }
   .studio-live-stats { display: none; }
-  .hand-select { grid-column: 2; }
+  .view-mode-control { grid-column: 1; grid-row: 2; justify-self: start; }
+  .hand-select { grid-column: 2; grid-row: 1; }
+  .studio-toolbar > .segmented-control:first-child { grid-column: 1; grid-row: 1; }
   .highway-wrap .note-highway { --op-highway-height: clamp(280px, 50vh, 480px); }
+  .practice-visual--both .highway-wrap .note-highway { --op-highway-height: clamp(88px, 12vh, 120px); }
+  .practice-visual--both + .keyboard-wrap .piano-keyboard__keybed { block-size: 4.4rem; }
   .keyboard-wrap .piano-keyboard__keybed { block-size: clamp(6rem, 22vw, 8rem); }
   .transport-bar { grid-template-columns: 1fr auto 1fr; }
   .results-card { padding: 34px 22px; }
@@ -101,4 +121,5 @@
   .highway-wrap .note-highway { --op-highway-height: 310px; }
   .keyboard-wrap .piano-keyboard__keybed { block-size: 5.2rem; }
   .studio-header { height: 57px; }
+  .practice-visual--both .highway-wrap .note-highway { --op-highway-height: 88px; }
 }

@@ -16,15 +16,19 @@ import {
   Target,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UseMidiResult } from '../hooks/useMidi'
+import { resolvePracticeRange, type KeyboardConfig } from '../lib/keyboardConfig'
 import type { Lesson, Song } from '../types'
 import { NoteHighway } from './NoteHighway'
 import { PianoKeyboard } from './PianoKeyboard'
 import './PracticeStudio.css'
 
+const SheetMusic = lazy(() => import('./SheetMusic').then((module) => ({ default: module.SheetMusic })))
+
 type PracticeMode = 'wait' | 'flow'
 type HandMode = 'both' | 'right' | 'left'
+type VisualMode = 'tiles' | 'sheet' | 'both'
 
 interface PracticeResult {
   songTitle: string
@@ -42,6 +46,7 @@ interface PracticeStudioProps {
   onOpenMidi: () => void
   onComplete: (result: PracticeResult) => void
   onResumeAudio: () => Promise<void>
+  keyboardConfig: KeyboardConfig
 }
 
 function formatTime(seconds: number) {
@@ -53,19 +58,6 @@ function noteName(midi: number) {
   return ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'][midi % 12]
 }
 
-function getRange(song: Song): [number, number] {
-  if (!song.notes.length) return [48, 72]
-  const pitches = song.notes.map((note) => note.midi)
-  let low = Math.max(21, Math.min(...pitches) - 3)
-  let high = Math.min(108, Math.max(...pitches) + 3)
-  if (high - low < 23) {
-    const extra = Math.ceil((23 - (high - low)) / 2)
-    low = Math.max(21, low - extra)
-    high = Math.min(108, high + extra)
-  }
-  return [low, high]
-}
-
 export function PracticeStudio({
   song,
   lesson,
@@ -74,9 +66,11 @@ export function PracticeStudio({
   onOpenMidi,
   onComplete,
   onResumeAudio,
+  keyboardConfig,
 }: PracticeStudioProps) {
   const [mode, setMode] = useState<PracticeMode>('wait')
   const [handMode, setHandMode] = useState<HandMode>('both')
+  const [visualMode, setVisualMode] = useState<VisualMode>('tiles')
   const [speed, setSpeed] = useState(.75)
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -96,11 +90,13 @@ export function PracticeStudio({
   const completedRef = useRef(false)
   const lastEventRef = useRef<number | null>(null)
   const feedbackTimer = useRef<number | null>(null)
-  const [startMidi, endMidi] = useMemo(() => getRange(song), [song])
-
   const practiceNotes = useMemo(
     () => song.notes.filter((note) => handMode === 'both' || note.hand === handMode),
     [handMode, song.notes],
+  )
+  const [startMidi, endMidi] = useMemo(
+    () => resolvePracticeRange(practiceNotes, keyboardConfig),
+    [keyboardConfig, practiceNotes],
   )
 
   useEffect(() => { hitRef.current = hitNotes }, [hitNotes])
@@ -289,19 +285,43 @@ export function PracticeStudio({
             <span><Sparkles size={14} /> {streak}<small> streak</small></span>
             <span className="accuracy-live">{hitNotes.size || missedNotes.size ? accuracy : '—'}<small>% accuracy</small></span>
           </div>
+          <div className="view-mode-control segmented-control" aria-label="Practice visual mode">
+            <button className={visualMode === 'tiles' ? 'active' : ''} onClick={() => setVisualMode('tiles')}>Tiles</button>
+            <button className={visualMode === 'sheet' ? 'active' : ''} onClick={() => setVisualMode('sheet')}>Score</button>
+            <button className={visualMode === 'both' ? 'active' : ''} onClick={() => setVisualMode('both')}>Both</button>
+          </div>
           <button className="hand-select" onClick={() => setHandMode((current) => current === 'both' ? 'right' : current === 'right' ? 'left' : 'both')}><Hand size={15} /> {handMode === 'both' ? 'Both hands' : `${handMode[0].toUpperCase()}${handMode.slice(1)} hand`} <ChevronDown size={13} /></button>
         </div>
 
-        <div className="highway-wrap">
-          <NoteHighway
-            notes={practiceNotes}
-            currentTime={currentTime}
-            leadTime={Math.max(2.7, 4 / speed)}
-            startMidi={startMidi}
-            endMidi={endMidi}
-            hitNotes={hitNotes}
-            missedNotes={missedNotes}
-          />
+        <div className={`practice-visual practice-visual--${visualMode}`}>
+          {visualMode !== 'tiles' && (
+            <div className="sheet-music-wrap">
+              <Suspense fallback={<div className="score-loading"><span className="mini-spinner" /> Engraving score…</div>}>
+                <SheetMusic
+                  song={song}
+                  notes={practiceNotes}
+                  currentTime={currentTime}
+                  hitNotes={hitNotes}
+                  missedNotes={missedNotes}
+                  compact={visualMode === 'both'}
+                  measuresVisible={visualMode === 'both' ? 3 : 4}
+                />
+              </Suspense>
+            </div>
+          )}
+          {visualMode !== 'sheet' && (
+            <div className="highway-wrap">
+              <NoteHighway
+                notes={practiceNotes}
+                currentTime={currentTime}
+                leadTime={Math.max(2.7, 4 / speed)}
+                startMidi={startMidi}
+                endMidi={endMidi}
+                hitNotes={hitNotes}
+                missedNotes={missedNotes}
+              />
+            </div>
+          )}
           <AnimatePresence>
             {feedback && (
               <motion.div className={`timing-feedback ${feedback.kind}`} initial={{ opacity: 0, y: 8, scale: .92 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }}>

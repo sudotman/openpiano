@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookOpen,
   Cable,
+  GraduationCap,
   Library,
   Piano,
   Settings2,
@@ -9,7 +10,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-export type AppView = 'learn' | 'songs' | 'progress' | 'settings'
+export type AppView = 'learn' | 'theory' | 'songs' | 'progress' | 'settings'
 
 interface AppShellProps {
   activeView: AppView
@@ -17,11 +18,16 @@ interface AppShellProps {
   midiConnected: boolean
   midiName?: string
   onMidiClick: () => void
+  profileName: string
+  profileInitials: string
+  streakDays: number
+  onProfileClick: () => void
   children: ReactNode
 }
 
 const navItems = [
   { id: 'learn' as const, label: 'Learn', icon: BookOpen },
+  { id: 'theory' as const, label: 'Theory', icon: GraduationCap },
   { id: 'songs' as const, label: 'Songs', icon: Library },
   { id: 'progress' as const, label: 'Progress', icon: BarChart3 },
   { id: 'settings' as const, label: 'Setup', icon: Settings2 },
@@ -29,6 +35,7 @@ const navItems = [
 
 const viewTitles: Record<AppView, { eyebrow: string; title: string }> = {
   learn: { eyebrow: 'Your curriculum', title: 'Learn' },
+  theory: { eyebrow: 'Notes, rhythm & harmony', title: 'Theory Lab' },
   songs: { eyebrow: 'Practice anything', title: 'Songbook' },
   progress: { eyebrow: 'Your playing, measured', title: 'Progress' },
   settings: { eyebrow: 'Keyboard & experience', title: 'Setup' },
@@ -40,6 +47,10 @@ export function AppShell({
   midiConnected,
   midiName,
   onMidiClick,
+  profileName,
+  profileInitials,
+  streakDays,
+  onProfileClick,
   children,
 }: AppShellProps) {
   const heading = viewTitles[activeView]
@@ -69,13 +80,13 @@ export function AppShell({
         </nav>
 
         <div className="nav-footer">
-          <div className="streak-orbit" aria-label="4 day practice streak">
+          <div className="streak-orbit" aria-label={`${streakDays} day practice streak`}>
             <Sparkles size={17} />
-            <div><strong>4 days</strong><span>current streak</span></div>
+            <div><strong>{streakDays} {streakDays === 1 ? 'day' : 'days'}</strong><span>current streak</span></div>
           </div>
-          <button className="profile-button" aria-label="Open profile">
-            <span>SK</span>
-            <div><strong>Satyam</strong><small>Piano explorer</small></div>
+          <button className="profile-button" aria-label={`Open ${profileName}'s local profile`} onClick={onProfileClick}>
+            <span>{profileInitials}</span>
+            <div><strong>{profileName}</strong><small>Local learner profile</small></div>
           </button>
         </div>
       </aside>
