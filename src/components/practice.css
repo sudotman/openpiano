@@ -1,0 +1,570 @@
+:where(.piano-keyboard, .note-highway) {
+  --op-practice-bg: #090b0a;
+  --op-practice-surface: #0e110f;
+  --op-practice-surface-raised: #151916;
+  --op-practice-line: rgba(236, 242, 226, 0.12);
+  --op-practice-line-strong: rgba(236, 242, 226, 0.22);
+  --op-practice-text: #f1f4ec;
+  --op-practice-muted: #889087;
+  --op-practice-accent: #d9ff5b;
+  --op-practice-accent-ink: #101505;
+  --op-practice-left: #96a8ad;
+  --op-practice-danger: #ff786c;
+  --op-practice-white-key: #e9ebe4;
+  --op-practice-black-key: #111411;
+  box-sizing: border-box;
+  color: var(--op-practice-text);
+  color-scheme: dark;
+  font-family: inherit;
+}
+
+:where(.piano-keyboard, .note-highway) *,
+:where(.piano-keyboard, .note-highway) *::before,
+:where(.piano-keyboard, .note-highway) *::after {
+  box-sizing: border-box;
+}
+
+/* Piano keyboard --------------------------------------------------------- */
+
+.piano-keyboard {
+  position: relative;
+  isolation: isolate;
+  inline-size: 100%;
+  overflow: hidden;
+  border: 1px solid var(--op-practice-line-strong);
+  border-radius: 0.9rem;
+  background: var(--op-practice-surface);
+  box-shadow:
+    0 1.25rem 3.5rem rgba(0, 0, 0, 0.28),
+    inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.piano-keyboard__rail {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 2rem;
+  padding-inline: 0.7rem;
+  border-block-end: 1px solid rgba(255, 255, 255, 0.06);
+  background: #101310;
+  color: var(--op-practice-muted);
+}
+
+.piano-keyboard__rail-mark {
+  inline-size: 0.38rem;
+  block-size: 0.38rem;
+  border-radius: 999px;
+  background: var(--op-practice-accent);
+  box-shadow: 0 0 0.8rem rgba(217, 255, 91, 0.38);
+}
+
+.piano-keyboard__range {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 680;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.piano-keyboard__range-line {
+  inline-size: 1.15rem;
+  block-size: 1px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.piano-keyboard__keybed {
+  position: relative;
+  block-size: clamp(8rem, 17vw, 13.5rem);
+  overflow: hidden;
+  background: #bfc2bb;
+  touch-action: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.piano-keyboard--compact .piano-keyboard__rail {
+  min-block-size: 1.55rem;
+}
+
+.piano-keyboard--compact .piano-keyboard__keybed {
+  block-size: clamp(5.4rem, 11vw, 8.2rem);
+}
+
+.piano-keyboard__key {
+  position: absolute;
+  inset-block-start: 0;
+  display: block;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  cursor: pointer;
+  touch-action: none;
+  transition:
+    transform 80ms ease,
+    background-color 110ms ease,
+    box-shadow 140ms ease,
+    filter 140ms ease;
+}
+
+.piano-keyboard__key--white {
+  z-index: 1;
+  block-size: 100%;
+  border-inline-end: 1px solid rgba(16, 19, 16, 0.36);
+  background:
+    linear-gradient(180deg, #f3f4ef 0%, var(--op-practice-white-key) 78%, #d4d7cf 100%);
+  box-shadow:
+    inset 0 -0.38rem 0 rgba(0, 0, 0, 0.055),
+    inset -1px 0 rgba(255, 255, 255, 0.44);
+  color: #555b54;
+}
+
+.piano-keyboard__key--black {
+  z-index: 3;
+  block-size: 62%;
+  border-inline: 1px solid #060806;
+  border-block-end: 0.28rem solid #070907;
+  border-end-start-radius: 0.22rem;
+  border-end-end-radius: 0.22rem;
+  background:
+    linear-gradient(90deg, #080a08 0%, #1c201c 48%, var(--op-practice-black-key) 100%);
+  box-shadow:
+    0 0.35rem 0.55rem rgba(0, 0, 0, 0.48),
+    inset 1px 0 rgba(255, 255, 255, 0.08),
+    inset -1px 0 rgba(255, 255, 255, 0.035);
+  color: #e7eae3;
+}
+
+.piano-keyboard__key-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.piano-keyboard__key--white .piano-keyboard__key-shine {
+  border-block-start: 1px solid rgba(255, 255, 255, 0.88);
+}
+
+.piano-keyboard__key--black .piano-keyboard__key-shine {
+  inset: 1px 15% auto;
+  block-size: 32%;
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.piano-keyboard__key--white.is-target {
+  box-shadow:
+    inset 0 -0.32rem var(--op-practice-accent),
+    inset 0 -0.75rem 1.35rem rgba(217, 255, 91, 0.17),
+    inset -1px 0 rgba(255, 255, 255, 0.44);
+}
+
+.piano-keyboard__key--black.is-target {
+  box-shadow:
+    0 0.35rem 0.55rem rgba(0, 0, 0, 0.48),
+    inset 0 -0.25rem var(--op-practice-accent),
+    0 0 0 1px rgba(217, 255, 91, 0.48);
+}
+
+.piano-keyboard__key.is-active,
+.piano-keyboard__key.is-correct {
+  background: var(--op-practice-accent);
+  color: var(--op-practice-accent-ink);
+  filter: saturate(0.92);
+}
+
+.piano-keyboard__key--white.is-active,
+.piano-keyboard__key--white.is-correct {
+  transform: translateY(0.2rem);
+  box-shadow:
+    inset 0 -0.22rem rgba(16, 21, 5, 0.19),
+    inset 0 0 1.25rem rgba(255, 255, 255, 0.21),
+    0 0 1.3rem rgba(217, 255, 91, 0.15);
+}
+
+.piano-keyboard__key--black.is-active,
+.piano-keyboard__key--black.is-correct {
+  transform: translateY(0.18rem);
+  border-color: #758c28;
+  border-block-end-color: #819b2c;
+  box-shadow:
+    0 0.18rem 0.34rem rgba(0, 0, 0, 0.44),
+    0 0 1.1rem rgba(217, 255, 91, 0.22);
+}
+
+.piano-keyboard__key.is-correct {
+  animation: op-key-confirm 360ms ease-out;
+}
+
+.piano-keyboard__key.is-wrong {
+  background: var(--op-practice-danger);
+  color: #240805;
+  box-shadow:
+    inset 0 -0.28rem rgba(85, 18, 12, 0.2),
+    0 0 1rem rgba(255, 120, 108, 0.24);
+  animation: op-key-wrong 210ms ease-out;
+}
+
+.piano-keyboard__key:focus-visible {
+  z-index: 6;
+  outline: 2px solid var(--op-practice-accent);
+  outline-offset: -3px;
+}
+
+.piano-keyboard__note-label {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0.74rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.05em;
+  overflow: hidden;
+  font-size: clamp(0.56rem, 0.78vw, 0.72rem);
+  font-weight: 720;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  opacity: 0.68;
+  pointer-events: none;
+}
+
+.piano-keyboard__note-label small {
+  font-size: 0.72em;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.piano-keyboard--compact .piano-keyboard__note-label {
+  inset-block-end: 0.48rem;
+}
+
+/* Falling-note highway --------------------------------------------------- */
+
+.note-highway {
+  position: relative;
+  isolation: isolate;
+  inline-size: 100%;
+  block-size: var(--op-highway-height, clamp(20rem, 54vh, 42rem));
+  min-block-size: 16rem;
+  overflow: hidden;
+  border: 1px solid var(--op-practice-line-strong);
+  border-radius: 0.9rem;
+  background: var(--op-practice-bg);
+  box-shadow:
+    0 1.4rem 4rem rgba(0, 0, 0, 0.3),
+    inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.note-highway__stage,
+.note-highway__lanes,
+.note-highway__guides,
+.note-highway__notes,
+.note-highway__targets {
+  position: absolute;
+  inset: 0;
+}
+
+.note-highway__stage {
+  overflow: hidden;
+  container-type: size;
+  background:
+    linear-gradient(180deg, #070908 0%, #0c0f0d 52%, #111511 100%);
+}
+
+.note-highway__stage::after {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 3rem 3.4rem rgba(0, 0, 0, 0.28),
+    inset 0 -2rem 3rem rgba(0, 0, 0, 0.16);
+  content: "";
+  pointer-events: none;
+}
+
+.note-highway__horizon {
+  position: absolute;
+  z-index: 9;
+  inset-block-start: 0.65rem;
+  inset-inline: 0.72rem;
+  display: flex;
+  justify-content: space-between;
+  color: rgba(222, 228, 216, 0.45);
+  font-size: 0.6rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  pointer-events: none;
+}
+
+.note-highway__lanes {
+  z-index: 1;
+}
+
+.note-highway__lane {
+  position: absolute;
+  inset-block: 0;
+}
+
+.note-highway__lane--white {
+  border-inline-end: 1px solid rgba(231, 237, 224, 0.045);
+  background: rgba(255, 255, 255, 0.004);
+}
+
+.note-highway__lane--black {
+  border-inline: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.095);
+}
+
+.note-highway__guides {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.note-highway__guide {
+  position: absolute;
+  inset-inline: 0;
+  block-size: 1px;
+  background: rgba(226, 233, 217, 0.075);
+}
+
+.note-highway__guide--bar {
+  background: rgba(226, 233, 217, 0.17);
+  box-shadow: 0 -1px rgba(0, 0, 0, 0.12);
+}
+
+.note-highway__guide small {
+  position: absolute;
+  inset-block-start: -0.58rem;
+  inset-inline-start: 0.65rem;
+  color: rgba(226, 233, 217, 0.32);
+  font-size: 0.54rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 680;
+  letter-spacing: 0.08em;
+}
+
+.note-highway__notes {
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.note-highway__note {
+  position: absolute;
+  display: block;
+  min-block-size: 0.52rem;
+  opacity: calc(0.76 + var(--op-note-velocity) * 0.24);
+  transform: translate3d(0, calc(var(--op-note-y-offset) * 1cqh), 0);
+  will-change: transform;
+}
+
+.note-highway__note-core {
+  position: absolute;
+  inset: 0 max(0.5px, 0.08vw);
+  display: block;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.28rem 0.28rem 0.18rem 0.18rem;
+  background: var(--op-practice-accent);
+  box-shadow:
+    0 0.42rem rgba(217, 255, 91, 0.11),
+    inset 0 1px rgba(255, 255, 255, 0.24),
+    inset 0 -1px rgba(16, 21, 5, 0.16);
+}
+
+.note-highway__note--left .note-highway__note-core {
+  border-color: rgba(229, 237, 239, 0.22);
+  border-inline-start: 2px solid #c9d3d5;
+  background: var(--op-practice-left);
+  box-shadow:
+    0 0.36rem rgba(150, 168, 173, 0.08),
+    inset 0 1px rgba(255, 255, 255, 0.19),
+    inset 0 -1px rgba(9, 13, 14, 0.19);
+}
+
+.note-highway__note--both .note-highway__note-core {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: linear-gradient(
+    90deg,
+    var(--op-practice-left) 0%,
+    var(--op-practice-left) 46%,
+    var(--op-practice-accent) 46%,
+    var(--op-practice-accent) 100%
+  );
+}
+
+.note-highway__note--accidental .note-highway__note-core {
+  inset-inline: 0;
+  border-radius: 0.2rem 0.2rem 0.12rem 0.12rem;
+}
+
+.note-highway__note-head {
+  position: absolute;
+  z-index: 2;
+  inset-inline: max(1px, 0.08vw);
+  inset-block-end: 0;
+  display: block;
+  block-size: clamp(0.16rem, 0.45vh, 0.28rem);
+  border-radius: 0.16rem;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 0 0.4rem rgba(255, 255, 255, 0.13);
+}
+
+.note-highway__note.is-target .note-highway__note-core {
+  filter: brightness(1.12);
+  box-shadow:
+    0 0 1.15rem rgba(217, 255, 91, 0.36),
+    inset 0 1px rgba(255, 255, 255, 0.34);
+}
+
+.note-highway__note.is-hit .note-highway__note-core {
+  border-color: rgba(255, 255, 255, 0.62);
+  background: var(--op-practice-accent);
+  box-shadow:
+    0 0 1.2rem rgba(217, 255, 91, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  animation: op-note-hit 300ms ease-out;
+}
+
+.note-highway__note.is-missed {
+  opacity: 0.64;
+}
+
+.note-highway__note.is-missed .note-highway__note-core {
+  border-color: rgba(255, 120, 108, 0.78);
+  background: rgba(255, 120, 108, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(255, 120, 108, 0.12);
+  animation: op-note-miss 220ms ease-out;
+}
+
+.note-highway__play-line {
+  position: absolute;
+  z-index: 6;
+  inset-block-start: calc(86% - 1px);
+  inset-inline: 0;
+  block-size: 2px;
+  background: var(--op-practice-accent);
+  box-shadow:
+    0 0 0.55rem rgba(217, 255, 91, 0.44),
+    0 0.5rem 1.5rem rgba(217, 255, 91, 0.08);
+  pointer-events: none;
+}
+
+.note-highway__play-line > span {
+  position: absolute;
+  inset-block-start: -0.7rem;
+  inset-inline-start: 0.7rem;
+  padding: 0.14rem 0.28rem 0.12rem;
+  border-radius: 0.18rem;
+  background: var(--op-practice-accent);
+  color: var(--op-practice-accent-ink);
+  font-size: 0.5rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.note-highway__targets {
+  z-index: 7;
+  pointer-events: none;
+}
+
+.note-highway__key-target {
+  position: absolute;
+  inset-block-start: calc(86% - 0.22rem);
+  display: block;
+  block-size: 0.48rem;
+  border-inline: max(1px, 0.08vw) solid transparent;
+  border-radius: 0.18rem;
+  background-clip: padding-box;
+  background-color: var(--op-practice-accent);
+  box-shadow: 0 0 0.8rem rgba(217, 255, 91, 0.48);
+  animation: op-target-breathe 780ms ease-in-out infinite alternate;
+}
+
+.note-highway__key-target--accidental {
+  border-inline-width: 0;
+}
+
+@keyframes op-key-confirm {
+  0% { filter: brightness(1.38); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes op-key-wrong {
+  0%, 100% { transform: translateX(0); }
+  35% { transform: translateX(-2px); }
+  70% { transform: translateX(2px); }
+}
+
+@keyframes op-note-hit {
+  0% { filter: brightness(1.7); transform: scaleX(1.08); }
+  100% { filter: brightness(1); transform: scaleX(1); }
+}
+
+@keyframes op-note-miss {
+  0%, 100% { transform: translateX(0); }
+  35% { transform: translateX(-1px); }
+  70% { transform: translateX(1px); }
+}
+
+@keyframes op-target-breathe {
+  from { opacity: 0.68; filter: brightness(0.96); }
+  to { opacity: 1; filter: brightness(1.15); }
+}
+
+@media (max-width: 700px) {
+  .piano-keyboard,
+  .note-highway {
+    border-radius: 0.65rem;
+  }
+
+  .piano-keyboard__rail {
+    min-block-size: 1.7rem;
+    padding-inline: 0.52rem;
+  }
+
+  .piano-keyboard__keybed {
+    block-size: clamp(7.2rem, 29vw, 9rem);
+  }
+
+  .piano-keyboard--compact .piano-keyboard__keybed {
+    block-size: clamp(5rem, 21vw, 6.4rem);
+  }
+
+  .piano-keyboard__note-label {
+    inset-block-end: 0.5rem;
+    font-size: 0.53rem;
+  }
+
+  .note-highway {
+    block-size: var(--op-highway-height, clamp(18rem, 51vh, 32rem));
+  }
+
+  .note-highway__horizon {
+    inset-block-start: 0.5rem;
+    inset-inline: 0.5rem;
+    font-size: 0.52rem;
+  }
+
+  .note-highway__guide small {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piano-keyboard__key,
+  .note-highway__note-core,
+  .note-highway__key-target {
+    transition: none;
+    animation: none !important;
+  }
+}
