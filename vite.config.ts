@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // Relative asset URLs work both at localhost and under a GitHub Pages
+  // project path such as https://sudotman.github.io/openpiano/.
+  base: './',
   clearScreen: false,
   server: {
     // A fixed IPv4 listener keeps bookmarked 127.0.0.1 URLs and Vite's HMR

@@ -72,6 +72,18 @@ The test suite covers curriculum integrity, keyboard presets and calibration ran
 
 Every pull request, push to `main`, and `v*` tag also runs `.github/workflows/package.yml`. The workflow tests and builds with Node.js 22, then publishes the production `dist/` directory as a 30-day GitHub Actions artifact.
 
+## Deploy with GitHub Pages
+
+The same workflow deploys every successful `main` build to `https://sudotman.github.io/openpiano/`. Pull requests and tags are tested and packaged but do not change the live site.
+
+There is one repository setting to enable before the first deployment:
+
+1. Open **Settings → Pages** in the GitHub repository.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push or merge to `main`, or run **Test, package and deploy OpenPiano** manually from the Actions tab while on `main`.
+
+The deployment uses GitHub's `github-pages` environment and official Pages artifact/deployment actions. OpenPiano uses relative production asset paths and hash navigation, so refreshing lessons and practice screens works from the `/openpiano/` project path without a separate web server. Hosted learner profiles remain local to that site's browser storage and are separate from profiles created on localhost.
+
 ## Main modules
 
 - `src/hooks/useMidi.ts` — Web MIDI permissions, devices, and live note state
