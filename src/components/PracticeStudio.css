@@ -33,9 +33,10 @@
 .studio-live-stats svg { color: #d9ff5b; }
 .studio-live-stats small { color: #656c65; font: 500 8px "Avenir Next", sans-serif; }
 .studio-live-stats .accuracy-live { padding-left: 17px; border-left: 1px solid var(--studio-line); color: #d9ff5b; }
-.hand-select, .speed-control { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #858d85; font-size: 9px; cursor: pointer; }
+.studio-live-stats .listen-status { color: #d9ff5b; }
+.hand-select, .speed-control, .track-control, .metronome-control { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #858d85; font-size: 9px; cursor: pointer; }
 .hand-select { justify-self: end; padding-top: 8px; }
-.hand-select:hover, .speed-control:hover { color: white; }
+.hand-select:hover, .speed-control:hover, .track-control:hover, .metronome-control:hover { color: white; }
 .practice-visual { position: relative; }
 .highway-wrap { position: relative; }
 .highway-wrap .note-highway { --op-highway-height: clamp(300px, 47vh, 570px); border-radius: 9px 9px 0 0; border-bottom: 0; }
@@ -62,6 +63,9 @@
 .start-cue > span { color: #838b83; font-size: 9px; text-transform: uppercase; letter-spacing: 1.4px; }
 .start-cue > strong { margin-bottom: 10px; font-size: clamp(19px, 2.5vw, 30px); letter-spacing: -.8px; }
 .start-cue button { height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 17px; border: 0; border-radius: 7px; background: #d9ff5b; color: #11150b; font-size: 11px; font-weight: 800; cursor: pointer; }
+.start-cue-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.start-cue .start-cue-actions .secondary { border: 1px solid rgba(255,255,255,.18); background: rgba(20,24,20,.86); color: #e6eae3; }
+.start-cue .start-cue-actions .secondary:hover { border-color: rgba(217,255,91,.45); color: #d9ff5b; }
 .transport-bar { height: 55px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
 .time-readout { display: flex; align-items: center; gap: 8px; color: #929a92; font: 600 9px ui-monospace, monospace; }
 .time-readout i { width: 2px; height: 2px; border-radius: 50%; background: #586058; }
@@ -71,15 +75,36 @@
 .transport-controls .play-control { width: 41px; height: 41px; background: #d9ff5b; color: #11150b; }
 .transport-controls .play-control:hover { background: #e5ff85; color: #11150b; }
 .skip-icon { transform: scaleX(-1); }
-.speed-control { justify-self: end; padding: 7px 0; }
-.practice-settings-popover { position: fixed; z-index: 50; right: 18px; top: 60px; width: 285px; padding: 18px; border: 1px solid var(--studio-line); border-radius: 10px; background: #1a1e1a; box-shadow: 0 18px 60px rgba(0,0,0,.5); }
-.practice-settings-popover > div { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--studio-line); }
-.practice-settings-popover > div strong { font-size: 11px; }
-.practice-settings-popover > div button { border: 0; background: transparent; color: #818981; cursor: pointer; }
-.practice-settings-popover label { display: grid; grid-template-columns: 55px 1fr 30px; align-items: center; gap: 8px; min-height: 49px; border-bottom: 1px solid rgba(255,255,255,.07); color: #a2aaa2; font-size: 9px; }
-.practice-settings-popover label > button { grid-column: 2 / 4; height: 28px; border: 1px solid var(--studio-line); border-radius: 5px; background: #222722; color: #c9cec8; font-size: 9px; cursor: pointer; }
-.practice-settings-popover input { accent-color: #d9ff5b; }
-.practice-settings-popover small { text-align: right; color: #d9ff5b; font: 600 8px ui-monospace, monospace; }
+.transport-options { justify-self: end; display: flex; align-items: center; gap: 10px; }
+.transport-options > button { min-height: 30px; padding: 0; white-space: nowrap; }
+.transport-options > button + button { padding-left: 10px; border-left: 1px solid var(--studio-line); }
+.transport-options > button.active { color: #d9ff5b; }
+.transport-options > button:disabled { opacity: .7; cursor: default; }
+.speed-control small { padding: 2px 5px; border-radius: 999px; background: rgba(217,255,91,.1); color: #d9ff5b; font: 700 7px ui-monospace, monospace; }
+.practice-settings-popover { position: fixed; z-index: 50; right: 18px; top: 60px; width: 350px; max-height: calc(100vh - 78px); overflow-y: auto; padding: 18px; border: 1px solid var(--studio-line); border-radius: 10px; background: #1a1e1a; box-shadow: 0 18px 60px rgba(0,0,0,.5); }
+.settings-heading { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--studio-line); }
+.settings-heading strong { font-size: 11px; }
+.settings-heading button { width: 27px; height: 27px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: #818981; cursor: pointer; }
+.settings-heading button:hover { background: rgba(255,255,255,.06); color: white; }
+.setting-block { display: grid; gap: 10px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+.setting-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.setting-label > span { color: #cdd2cb; font-size: 9px; font-weight: 700; }
+.setting-label > strong { color: #d9ff5b; font: 700 12px ui-monospace, monospace; }
+.setting-label > small, .tempo-setting > small { color: #727a72; font-size: 8px; line-height: 1.4; }
+.tempo-setting > small { margin-top: -6px; }
+.tempo-input-row { display: grid; grid-template-columns: 1fr 86px; align-items: center; gap: 12px; }
+.tempo-input-row > input { width: 100%; accent-color: #d9ff5b; }
+.bpm-input { height: 31px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px; padding: 0 7px; border: 1px solid var(--studio-line); border-radius: 6px; background: #222722; }
+.bpm-input input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: #f0f2ed; font: 700 10px ui-monospace, monospace; }
+.bpm-input span { color: #6f776f; font: 700 7px ui-monospace, monospace; }
+.tempo-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tempo-presets button, .setting-choice button { min-height: 34px; border: 1px solid var(--studio-line); border-radius: 6px; background: #202420; color: #8e968e; font-size: 8px; font-weight: 700; cursor: pointer; }
+.tempo-presets button { display: grid; place-items: center; align-content: center; gap: 2px; }
+.tempo-presets button small { color: #626a62; font: 600 7px ui-monospace, monospace; }
+.tempo-presets button.active, .setting-choice button.active { border-color: rgba(217,255,91,.35); background: rgba(217,255,91,.08); color: #d9ff5b; }
+.tempo-presets button.active small { color: #a7bd62; }
+.setting-choice { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.setting-choice button { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .practice-settings-popover p { margin: 13px 0 0; color: #6f776f; font-size: 9px; line-height: 1.5; }
 .results-layer { position: fixed; z-index: 80; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(5,7,5,.82); backdrop-filter: blur(12px); }
 .results-card { width: min(510px, 100%); display: grid; place-items: center; padding: 42px; border: 1px solid rgba(255,255,255,.11); border-radius: 15px; background: #171b17; text-align: center; box-shadow: 0 30px 90px rgba(0,0,0,.55); }
@@ -112,7 +137,11 @@
   .practice-visual--both .highway-wrap .note-highway { --op-highway-height: clamp(88px, 12vh, 120px); }
   .practice-visual--both + .keyboard-wrap .piano-keyboard__keybed { block-size: 4.4rem; }
   .keyboard-wrap .piano-keyboard__keybed { block-size: clamp(6rem, 22vw, 8rem); }
-  .transport-bar { grid-template-columns: 1fr auto 1fr; }
+  .transport-bar { height: auto; min-height: 88px; grid-template-columns: 1fr auto; gap: 4px 10px; padding-top: 5px; }
+  .transport-controls { grid-column: 2; grid-row: 1; }
+  .transport-options { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; justify-content: center; min-width: 0; padding: 3px 0 5px; border-top: 1px solid rgba(255,255,255,.06); }
+  .transport-options > button { font-size: 8px; }
+  .practice-settings-popover { right: 7px; top: 58px; width: min(350px, calc(100vw - 14px)); }
   .results-card { padding: 34px 22px; }
   .results-card h2 { font-size: 29px; }
 }

@@ -8,6 +8,8 @@ OpenPiano is a browser-based piano teacher built around real MIDI input. It comb
 - 14 playable original, traditional, and public-domain arrangements with right- and left-hand parts
 - Falling-note practice aligned precisely to a responsive piano keyboard
 - Three practice views: falling tiles, standard grand-staff notation, or both together
+- Full-track listen-through before practice, plus an optional synthesized backing track while playing
+- Explicit BPM control with 50% / 75% / 100% shortcuts and a toggleable tempo-synced metronome
 - **Wait mode**, which holds the timeline until every required note in a chord is played
 - **Flow mode**, with live timing, misses, accuracy, and streak scoring
 - Live Web MIDI note-on/note-off input, velocity tracking, hot-plug detection, remembered device selection, and automatic reconnection after the first approval
@@ -55,7 +57,7 @@ The app responds to standard MIDI note-on and note-off messages. No MIDI connect
 
 Open **Songs**, press **Import MIDI**, and choose a `.mid` or `.midi` file. OpenPiano selects useful pitched/piano tracks, ignores percussion, normalizes the start time, and opens the imported arrangement directly in the practice studio.
 
-Inside the studio, switch between **Tiles**, **Score**, and **Both** without restarting the session. Imported MIDI is quantized into readable grand-staff notation automatically; tiles mode remains available if an unusual file cannot be engraved.
+Inside the studio, choose **Hear track first** for a no-scoring preview, or enable **Backing track** to hear the arrangement while you play. The tempo panel shows both the song's original BPM and the current playback BPM, keeps the 50% / 75% / 100% shortcuts, and includes a toggleable metronome. You can also switch between **Tiles**, **Score**, and **Both** without restarting the session. Imported MIDI is quantized into readable grand-staff notation automatically; tiles mode remains available if an unusual file cannot be engraved.
 
 ## Local learner profiles
 
@@ -89,7 +91,7 @@ The deployment uses GitHub's `github-pages` environment and official Pages artif
 - `src/hooks/useMidi.ts` — Web MIDI permissions, devices, and live note state
 - `src/lib/midiImport.ts` — safe MIDI parsing and OpenPiano song conversion
 - `src/lib/audio.ts` — lightweight polyphonic piano synth
-- `src/components/PracticeStudio.tsx` — timing, wait/flow modes, scoring, and results
+- `src/components/PracticeStudio.tsx` — track playback, metronome, tempo, wait/flow modes, scoring, and results
 - `src/components/NoteHighway.tsx` — aligned falling-note renderer
 - `src/components/PianoKeyboard.tsx` — accurate interactive key geometry
 - `src/components/SheetMusic.tsx` — live VexFlow grand staff, playhead, and note-result coloring

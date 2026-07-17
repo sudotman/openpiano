@@ -73,7 +73,7 @@ export function SongLibrary({ songs, onPractice, onImport, importing, importErro
             <span>Suggested for your level</span>
             <h2>{featured.title}</h2>
             <p>{featured.description}</p>
-            <div className="song-meta"><span>{featured.composer}</span><i /><span>{featured.difficulty}</span><i /><span>{formatDuration(featured.duration)}</span></div>
+            <div className="song-meta"><span>{featured.composer}</span><i /><span>{featured.difficulty}</span><i /><span>{formatDuration(featured.duration)}</span><i /><span>{featured.bpm} BPM</span></div>
             <button className="primary-action" onClick={() => onPractice(featured)}><Play size={17} fill="currentColor" /> Start practice</button>
           </div>
         </section>
