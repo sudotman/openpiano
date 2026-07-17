@@ -42,7 +42,7 @@ export function SetupView({
       <section className="keyboard-setup">
         <div className="setup-copy">
           <span className="section-kicker"><Cable size={14} /> MIDI input</span>
-          <h2>{connected ? 'Your keyboard is ready.' : 'Connect your Yamaha.'}</h2>
+          <h2>{connected ? 'Your keyboard is ready.' : 'Connect your keyboard.'}</h2>
           <p>Plug the PSR-E383 into this computer with USB, turn it on, then let OpenPiano listen for notes.</p>
 
           {!supported ? (

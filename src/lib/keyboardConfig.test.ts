@@ -24,7 +24,7 @@ describe('keyboard presets', () => {
       startMidi: 36,
       endMidi: 96,
       keyCount: 61,
-      recommended: true,
+      recommended: false,
     })
     expect(KEYBOARD_49_PRESET).toMatchObject({ startMidi: 36, endMidi: 84, keyCount: 49 })
     expect(KEYBOARD_76_PRESET).toMatchObject({ startMidi: 28, endMidi: 103, keyCount: 76 })

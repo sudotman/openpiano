@@ -20,6 +20,7 @@ import {
 } from './lib/appNavigation'
 import { createPianoSynth, type PianoSynth } from './lib/audio'
 import { DEFAULT_KEYBOARD_CONFIG, sanitizeKeyboardConfig, type KeyboardConfig } from './lib/keyboardConfig'
+import { renameImportedSong, sanitizeImportedSongTitle } from './lib/importedSongs'
 import {
   createLocalProfile,
   loadLocalProfileState,
@@ -324,6 +325,21 @@ export default function App() {
     }
   }
 
+  function handleRenameImportedSong(songId: string, value: string) {
+    const title = sanitizeImportedSongTitle(value)
+    if (!title) return
+
+    setImportedSongs((current) => {
+      const next = renameImportedSong(current, songId, title)
+      if (next === current) return current
+
+      writeProfileDomain(profileState.activeProfileId, 'songs', next)
+      const renamedSong = next.find((song) => song.id === songId)
+      if (renamedSong) transientSongsRef.current.set(songId, renamedSong)
+      return next
+    })
+  }
+
   function handlePracticeComplete(result: PracticeResult) {
     const session: SessionRecord = {
       id: `session-${Date.now()}`,
@@ -394,7 +410,7 @@ export default function App() {
   const activeContent = (() => {
     switch (activeView) {
       case 'songs':
-        return <SongLibrary songs={songs} onPractice={(song) => startPractice(song)} onImport={handleImport} importing={importing} importError={importError} />
+        return <SongLibrary songs={songs} onPractice={(song) => startPractice(song)} onImport={handleImport} onRename={handleRenameImportedSong} importing={importing} importError={importError} />
       case 'theory':
         return (
           <Suspense fallback={<div className="module-loading"><span className="mini-spinner dark" /><strong>Preparing the Theory Lab…</strong></div>}>

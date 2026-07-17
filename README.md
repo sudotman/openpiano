@@ -16,7 +16,7 @@ OpenPiano is a browser-based piano teacher built around real MIDI input. It comb
 - On-screen playable keys for trying every interaction without hardware
 - A warmer modeled piano voice with hammer attack, inharmonic string partials, stereo keyboard placement, natural decay, and subtle room resonance
 - MIDI file import with track selection, metadata cleanup, hand inference, and clear validation errors
-- A Yamaha PSR-E383 preset (61 keys, Yamaha C1–C6), common 49/76/88-key presets, custom endpoints, two-note MIDI calibration, and selectable Yamaha C3 / Scientific C4 octave labels
+- Because this is my main keyboard, A Yamaha PSR-E383 preset (61 keys, Yamaha C1–C6), common 49/76/88-key presets, custom endpoints, two-note MIDI calibration, and selectable Yamaha C3 / Scientific C4 octave labels
 - Password-free local learner profiles with separate songs, lesson progress, settings, theory scores, practice history, switching, renaming, and non-destructive logout
 - A six-part interactive Theory Lab for keyboard geography, chromatic staff reading, pulse training, scales, intervals, triads, inversions, and harmonic function
 - Browser Back navigation that stays inside OpenPiano across views, lesson sheets, and practice sessions so an active MIDI connection is not discarded
@@ -41,7 +41,7 @@ npm run dev:restart
 
 For Web MIDI, use a current Chromium-based browser such as Chrome or Edge. Web MIDI requires localhost or another secure context. The browser must ask once before any site can access MIDI; after approval, OpenPiano restores the remembered keyboard automatically.
 
-## Connect a Yamaha PSR-E383
+## Connect a Yamaha PSR-E383 (again, because I own this keyboard but should be the same for any other MIDI device)
 
 1. Connect the keyboard's **USB TO HOST** port to the computer.
 2. Turn the keyboard on.
