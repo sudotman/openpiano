@@ -5,3 +5,27 @@ dist
 *.tsbuildinfo
 .playwright-cli
 output/playwright
+.DS_Store
+.idea
+.pnpm-store
+*.cpuprofile
+*.local
+*.log
+/.vscode/
+/docs/.vitepress/cache
+/docs/.vitepress/.temp
+/packages/vite/LICENSE
+dist
+dist-ssr
+explorations
+node_modules
+!**/glob-import/root/dir/node_modules
+!**/fixtures/glob-exports/node_modules
+!**/fixtures/glob-exports/node_modules/my-pkg/dist
+playground-temp
+temp
+TODOs.md
+.eslintcache
+
+# runtime-created symlink for glob-import playground tests
+playground/glob-import/root/follow-symlinks/linked/my-lib

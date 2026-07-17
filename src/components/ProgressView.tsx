@@ -101,7 +101,7 @@ export function ProgressView({ sessions, completedLessons, theoryProgress }: Pro
         </div>
         <div className="skill-rows">
           {[
-            ['Note reading', theoryProgress.attempts ? theoryAccuracy(theoryProgress) : 18],
+            ['Note reading', theoryProgress.attempts ? theoryAccuracy(theoryProgress) : 0],
             ['Rhythm & timing', theoryProgress.rhythmBest],
             ['Right-hand control', avgAccuracy],
             ['Left-hand control', avgAccuracy ? Math.max(0, avgAccuracy - 8) : 0],

@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  safeReadStored,
+  safeRemoveStored,
+  safeWriteStored,
+} from "../lib/localProfiles";
 
 /**
  * A deliberately small subset of the Web MIDI interfaces. Keeping these local
@@ -31,6 +36,16 @@ interface MidiMessageEventLike extends Event {
 
 interface NavigatorWithMidi {
   requestMIDIAccess(options?: { sysex?: boolean }): Promise<MidiAccessLike>;
+}
+
+interface MidiPermissionStatusLike {
+  state: "granted" | "denied" | "prompt";
+}
+
+interface NavigatorWithMidiPermission {
+  permissions?: {
+    query(descriptor: { name: "midi"; sysex: boolean }): Promise<MidiPermissionStatusLike>;
+  };
 }
 
 export type MidiStatus =
@@ -66,9 +81,23 @@ export interface MidiNoteEvent {
 export interface UseMidiOptions {
   /** Select the first connected input after permission is granted. */
   autoSelect?: boolean;
+  /** Restore a previously-authorized connection without showing a new prompt. */
+  autoReconnect?: boolean;
   onNoteOn?: (event: MidiNoteEvent) => void;
   onNoteOff?: (event: MidiNoteEvent) => void;
 }
+
+export interface MidiInputPreference {
+  id: string;
+  name: string;
+  manufacturer: string;
+}
+
+const MIDI_ACCESS_REMEMBERED_KEY = "openpiano:midi-access-remembered:v1";
+const MIDI_INPUT_PREFERENCE_KEY = "openpiano:midi-input-preference:v1";
+
+let sharedMidiAccess: MidiAccessLike | null = null;
+let sharedMidiAccessPromise: Promise<MidiAccessLike> | null = null;
 
 export interface UseMidiResult {
   isSupported: boolean;
@@ -100,6 +129,99 @@ function supportsWebMidi(): boolean {
       .requestMIDIAccess ===
       "function"
   );
+}
+
+function readMidiInputPreference(): MidiInputPreference | null {
+  const value = safeReadStored<unknown>(MIDI_INPUT_PREFERENCE_KEY, null);
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<MidiInputPreference>;
+  if (typeof candidate.id !== "string" || !candidate.id) return null;
+  return {
+    id: candidate.id,
+    name: typeof candidate.name === "string" ? candidate.name : "",
+    manufacturer: typeof candidate.manufacturer === "string" ? candidate.manufacturer : "",
+  };
+}
+
+function normalizedIdentityPart(value: string) {
+  return value.trim().toLocaleLowerCase();
+}
+
+function sameDeviceIdentity(input: MidiInputDevice, preference: MidiInputPreference) {
+  const preferredName = normalizedIdentityPart(preference.name);
+  const preferredManufacturer = normalizedIdentityPart(preference.manufacturer);
+  if (!preferredName || normalizedIdentityPart(input.name) !== preferredName) return false;
+  return !preferredManufacturer || normalizedIdentityPart(input.manufacturer) === preferredManufacturer;
+}
+
+/**
+ * Keeps an explicitly selected keyboard stable across hot-plug events. If a
+ * browser changes its opaque input id, manufacturer/name matching restores it.
+ */
+export function resolvePreferredMidiInputId(
+  inputs: readonly MidiInputDevice[],
+  currentInputId: string | null,
+  preference: MidiInputPreference | null,
+  autoSelect: boolean,
+): string | null {
+  const connected = (input: MidiInputDevice) => input.state !== "disconnected";
+  const current = currentInputId ? inputs.find((input) => input.id === currentInputId) : null;
+  if (current && connected(current)) return current.id;
+
+  if (preference) {
+    const exact = inputs.find((input) => input.id === preference.id);
+    if (exact && connected(exact)) return exact.id;
+    const identityMatch = inputs.find((input) => connected(input) && sameDeviceIdentity(input, preference));
+    if (identityMatch) return identityMatch.id;
+    // Do not silently switch to a different controller while the learner's
+    // chosen keyboard is temporarily unplugged.
+    if (exact) return exact.id;
+  }
+
+  if (current) return current.id;
+  return autoSelect ? inputs.find(connected)?.id ?? currentInputId : currentInputId;
+}
+
+export function shouldAttemptMidiAutoReconnect(
+  permission: "granted" | "denied" | "prompt" | "unknown",
+  rememberedAccess: boolean,
+) {
+  return permission === "granted" || (permission === "unknown" && rememberedAccess);
+}
+
+async function midiPermissionState(): Promise<"granted" | "denied" | "prompt" | "unknown"> {
+  if (typeof navigator === "undefined") return "unknown";
+  const permissions = (navigator as unknown as NavigatorWithMidiPermission).permissions;
+  if (!permissions?.query) return "unknown";
+  try {
+    return (await permissions.query({ name: "midi", sysex: false })).state;
+  } catch {
+    // Some Chromium versions support Web MIDI but not querying its permission.
+    return "unknown";
+  }
+}
+
+async function canAutoReconnectMidi() {
+  const permission = await midiPermissionState();
+  const remembered = safeReadStored<boolean>(MIDI_ACCESS_REMEMBERED_KEY, false);
+  return shouldAttemptMidiAutoReconnect(permission, remembered === true);
+}
+
+function requestSharedMidiAccess(): Promise<MidiAccessLike> {
+  if (sharedMidiAccess) return Promise.resolve(sharedMidiAccess);
+  if (sharedMidiAccessPromise) return sharedMidiAccessPromise;
+
+  sharedMidiAccessPromise = (
+    navigator as unknown as NavigatorWithMidi
+  ).requestMIDIAccess({ sysex: false })
+    .then((access) => {
+      sharedMidiAccess = access;
+      return access;
+    })
+    .finally(() => {
+      sharedMidiAccessPromise = null;
+    });
+  return sharedMidiAccessPromise;
 }
 
 function now(): number {
@@ -146,7 +268,7 @@ function findNativeInput(
 }
 
 function midiAccessError(error: unknown): string {
-  if (error instanceof DOMException) {
+  if (typeof DOMException !== "undefined" && error instanceof DOMException) {
     if (error.name === "SecurityError") {
       return "MIDI access requires a secure page (HTTPS or localhost).";
     }
@@ -162,17 +284,24 @@ function midiAccessError(error: unknown): string {
   return "Could not access MIDI devices. Check the keyboard connection and browser permission.";
 }
 
+function isPermissionDenial(error: unknown) {
+  return !!error && typeof error === "object" && "name" in error &&
+    ((error as { name?: unknown }).name === "NotAllowedError" || (error as { name?: unknown }).name === "SecurityError");
+}
+
 /**
- * Connects a React view to a hardware MIDI input. Permission is intentionally
- * requested only by `requestAccess`, so callers can invoke it from a click or
- * tap (the browser-required user gesture).
+ * Connects OpenPiano to a hardware MIDI input. A new permission is requested
+ * only by `requestAccess`; an already-granted permission can be restored on a
+ * later mount without interrupting the learner with another prompt.
  */
 export function useMidi(options: UseMidiOptions = {}): UseMidiResult {
-  const { autoSelect = true } = options;
+  const { autoSelect = true, autoReconnect = true } = options;
   const isSupported = supportsWebMidi();
+  const [initialPreference] = useState<MidiInputPreference | null>(readMidiInputPreference);
+  const initialPreferenceRef = useRef<MidiInputPreference | null>(initialPreference);
   const [access, setAccess] = useState<MidiAccessLike | null>(null);
   const [inputs, setInputs] = useState<MidiInputDevice[]>([]);
-  const [selectedInputId, setSelectedInputId] = useState<string | null>(null);
+  const [selectedInputId, setSelectedInputId] = useState<string | null>(() => initialPreferenceRef.current?.id ?? null);
   const [status, setStatus] = useState<MidiStatus>(() =>
     isSupported ? "idle" : "unsupported",
   );
@@ -182,9 +311,11 @@ export function useMidi(options: UseMidiOptions = {}): UseMidiResult {
     () => new Map(),
   );
   const [lastEvent, setLastEvent] = useState<MidiNoteEvent | null>(null);
+  const [reconnectVersion, setReconnectVersion] = useState(0);
 
   const mountedRef = useRef(true);
   const requestPromiseRef = useRef<Promise<boolean> | null>(null);
+  const autoReconnectAttemptedRef = useRef(false);
   const activeNotesRef = useRef<Set<number>>(new Set());
   const velocitiesRef = useRef<Map<number, number>>(new Map());
   const callbacksRef = useRef({
@@ -292,19 +423,12 @@ export function useMidi(options: UseMidiOptions = {}): UseMidiResult {
 
     setInputs(nextInputs);
     setSelectedInputId((currentId) => {
-      const current = nextInputs.find((input) => input.id === currentId);
-      if (current && current.state !== "disconnected") return currentId;
-
-      if (autoSelectRef.current) {
-        const connected = nextInputs.find(
-          (input) => input.state !== "disconnected",
-        );
-        if (connected) return connected.id;
-      }
-
-      // Retain a disconnected device id so reconnecting the same keyboard can
-      // restore it automatically when no replacement input is available.
-      return currentId;
+      return resolvePreferredMidiInputId(
+        nextInputs,
+        currentId,
+        initialPreferenceRef.current,
+        autoSelectRef.current,
+      );
     });
     return nextInputs;
   }, []);
@@ -331,23 +455,16 @@ export function useMidi(options: UseMidiOptions = {}): UseMidiResult {
       setStatus("requesting");
       setError(null);
       try {
-        const midiAccess = await (
-          navigator as unknown as NavigatorWithMidi
-        ).requestMIDIAccess({ sysex: false });
+        const midiAccess = await requestSharedMidiAccess();
 
         if (!mountedRef.current) return false;
+        safeWriteStored(MIDI_ACCESS_REMEMBERED_KEY, true);
         setAccess(midiAccess);
-        const nextInputs = refreshInputs(midiAccess);
+        refreshInputs(midiAccess);
         setStatus("ready");
-
-        if (autoSelectRef.current) {
-          const firstConnected = nextInputs.find(
-            (input) => input.state !== "disconnected",
-          );
-          if (firstConnected) setSelectedInputId(firstConnected.id);
-        }
         return true;
       } catch (requestError) {
+        if (isPermissionDenial(requestError)) safeRemoveStored(MIDI_ACCESS_REMEMBERED_KEY);
         if (mountedRef.current) {
           setStatus("error");
           setError(midiAccessError(requestError));
@@ -363,19 +480,48 @@ export function useMidi(options: UseMidiOptions = {}): UseMidiResult {
   }, [access, refreshInputs]);
 
   useEffect(() => {
+    if (!autoReconnect || !isSupported || access || autoReconnectAttemptedRef.current) return;
+    autoReconnectAttemptedRef.current = true;
+    void canAutoReconnectMidi().then((allowed) => {
+      if (allowed && mountedRef.current) void requestAccess();
+    });
+  }, [access, autoReconnect, isSupported, requestAccess]);
+
+  useEffect(() => {
     if (!access) return;
 
-    const handleStateChange: EventListener = () => {
+    const refreshConnection = () => {
       refreshInputs(access);
+      if (mountedRef.current) setReconnectVersion((version) => version + 1);
+    };
+    const handleStateChange: EventListener = refreshConnection;
+    const handlePageShow: EventListener = refreshConnection;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") refreshConnection();
     };
     access.addEventListener("statechange", handleStateChange);
+    window.addEventListener("pageshow", handlePageShow);
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       access.removeEventListener("statechange", handleStateChange);
+      window.removeEventListener("pageshow", handlePageShow);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [access, refreshInputs]);
 
   const selectedInput =
     inputs.find((input) => input.id === selectedInputId) ?? null;
+
+  useEffect(() => {
+    if (!selectedInput || selectedInput.state === "disconnected") return;
+    const preference: MidiInputPreference = {
+      id: selectedInput.id,
+      name: selectedInput.name,
+      manufacturer: selectedInput.manufacturer,
+    };
+    initialPreferenceRef.current = preference;
+    safeWriteStored(MIDI_INPUT_PREFERENCE_KEY, preference);
+  }, [selectedInput?.id, selectedInput?.manufacturer, selectedInput?.name, selectedInput?.state]);
 
   useEffect(() => {
     if (!access || !selectedInputId) {
@@ -432,7 +578,9 @@ export function useMidi(options: UseMidiOptions = {}): UseMidiResult {
     return () => {
       cancelled = true;
       input.removeEventListener("midimessage", handleMidiMessage);
-      if (input.close) void input.close().catch(() => undefined);
+      // Port ownership belongs to the document-level MIDIAccess object. Closing
+      // here used to disconnect the keyboard whenever React changed views or
+      // replayed effects in StrictMode.
       resetActiveNotes();
     };
   }, [
@@ -440,6 +588,8 @@ export function useMidi(options: UseMidiOptions = {}): UseMidiResult {
     emitNoteOff,
     emitNoteOn,
     resetActiveNotes,
+    reconnectVersion,
+    selectedInput?.connection,
     selectedInput?.state,
     selectedInputId,
   ]);
@@ -448,6 +598,8 @@ export function useMidi(options: UseMidiOptions = {}): UseMidiResult {
     (inputId: string | null): boolean => {
       if (inputId === null) {
         setSelectedInputId(null);
+        initialPreferenceRef.current = null;
+        safeRemoveStored(MIDI_INPUT_PREFERENCE_KEY);
         setError(null);
         resetActiveNotes();
         return true;
@@ -461,6 +613,13 @@ export function useMidi(options: UseMidiOptions = {}): UseMidiResult {
       }
 
       setError(null);
+      const preference: MidiInputPreference = {
+        id: selected.id,
+        name: selected.name,
+        manufacturer: selected.manufacturer,
+      };
+      initialPreferenceRef.current = preference;
+      safeWriteStored(MIDI_INPUT_PREFERENCE_KEY, preference);
       setSelectedInputId(inputId);
       return true;
     },

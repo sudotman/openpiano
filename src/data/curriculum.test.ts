@@ -10,37 +10,53 @@ import {
 
 const EXPECTED_SONG_IDS = [
   "first-light",
+  "hot-cross-buns",
   "au-clair",
   "ode-to-joy",
+  "twinkle-theme",
+  "minuet-g-theme",
   "lantern-waltz",
+  "scarborough-theme",
   "g-major-flight",
+  "fur-elise-opening",
   "prelude-c-opening",
+  "invention-c-motif",
+  "moonlight-opening",
+  "chopin-e-minor-opening",
 ];
 
 const EXPECTED_UNIT_LESSONS = [
   {
     id: "u1-first-notes",
-    lessonIds: ["l1-posture-pulse", "l2-middle-c", "l3-five-finger"],
+    lessonIds: ["l1-posture-pulse", "l2-middle-c", "l3-five-finger", "l-first-melody"],
   },
   {
     id: "u2-read-and-connect",
-    lessonIds: ["l4-steps-skips", "l5-bass-landmarks", "l6-hands-together"],
+    lessonIds: ["l4-steps-skips", "l5-bass-landmarks", "l6-hands-together", "l-reading-twinkle"],
   },
   {
     id: "u3-harmony-in-motion",
-    lessonIds: ["l7-triad-shapes", "l8-chord-changes", "l9-broken-chords"],
+    lessonIds: ["l7-triad-shapes", "l8-chord-changes", "l-dance-minuet", "l9-broken-chords"],
   },
   {
     id: "u4-play-musically",
-    lessonIds: ["l10-dynamics", "l11-articulation", "l12-pedal"],
+    lessonIds: ["l10-dynamics", "l11-articulation", "l12-pedal", "l-minor-story"],
   },
   {
     id: "u5-independent-hands",
-    lessonIds: ["l13-eighth-note-grid", "l14-contrary-motion", "l15-independence"],
+    lessonIds: ["l13-eighth-note-grid", "l14-contrary-motion", "l15-independence", "l-chromatic-neighbors"],
   },
   {
     id: "u6-fluent-performance",
-    lessonIds: ["l16-arpeggio-map", "l17-voicing", "l18-recital"],
+    lessonIds: ["l16-arpeggio-map", "l17-voicing", "l18-recital", "l-two-voice-entry"],
+  },
+  {
+    id: "u7-harmonic-color",
+    lessonIds: ["l-advanced-voice-leading", "l-inner-voice-balance", "l-rubato-architecture", "l-chopin-performance"],
+  },
+  {
+    id: "u8-concert-textures",
+    lessonIds: ["l-counterpoint-map", "l-subject-articulation", "l-triplet-continuum", "l-capstone-performance"],
   },
 ];
 
@@ -50,9 +66,22 @@ describe("curriculum graph", () => {
     expect(
       courseUnits.map(({ id, lessonIds }) => ({ id, lessonIds })),
     ).toEqual(EXPECTED_UNIT_LESSONS);
-    expect(courseUnits.map((unit) => unit.order)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(courseUnits.map((unit) => unit.order)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     expect(lessons.map((lesson) => lesson.order)).toEqual(
-      Array.from({ length: 18 }, (_, index) => index + 1),
+      Array.from({ length: 32 }, (_, index) => index + 1),
+    );
+  });
+
+  it("offers meaningful repertoire at every difficulty", () => {
+    const counts = builtInSongs.reduce<Record<string, number>>((total, song) => {
+      total[song.difficulty] = (total[song.difficulty] ?? 0) + 1;
+      return total;
+    }, {});
+
+    expect(builtInSongs).toHaveLength(14);
+    expect(counts).toEqual({ Beginner: 3, Easy: 3, Intermediate: 4, Advanced: 4 });
+    expect(new Set(builtInSongs.map((song) => song.source))).toEqual(
+      new Set(["exercise", "traditional", "public-domain"]),
     );
   });
 

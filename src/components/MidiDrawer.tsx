@@ -1,20 +1,17 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Cable, Check, CircleHelp, Keyboard, Piano, RefreshCw, Usb, X, Zap } from 'lucide-react'
 import type { UseMidiResult } from '../hooks/useMidi'
+import { formatMidiNote, type NoteNamingConvention } from '../lib/keyboardConfig'
 
 interface MidiDrawerProps {
   open: boolean
   midi: UseMidiResult
+  noteNaming: NoteNamingConvention
   onClose: () => void
   onEnable: () => Promise<void>
 }
 
-function noteName(midi: number) {
-  const names = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B']
-  return `${names[midi % 12]}${Math.floor(midi / 12) - 1}`
-}
-
-export function MidiDrawer({ open, midi, onClose, onEnable }: MidiDrawerProps) {
+export function MidiDrawer({ open, midi, noteNaming, onClose, onEnable }: MidiDrawerProps) {
   const active = Array.from(midi.activeNotes).sort((a, b) => a - b)
 
   return (
@@ -66,7 +63,7 @@ export function MidiDrawer({ open, midi, onClose, onEnable }: MidiDrawerProps) {
             <div className="midi-monitor">
               <div><span>Live note monitor</span><i className={midi.isConnected ? 'on' : ''} /></div>
               <div className="monitor-notes">
-                {active.length ? active.map((note) => <span key={note}>{noteName(note)}</span>) : <small>Play a key to test the connection</small>}
+                {active.length ? active.map((note) => <span key={note}>{formatMidiNote(note, noteNaming)}</span>) : <small>Play a key to test the connection</small>}
               </div>
             </div>
           </motion.aside>

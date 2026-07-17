@@ -5,6 +5,7 @@ import {
   KEYBOARD_PRESETS,
   MIDI_NOTE_MAX,
   MIDI_NOTE_MIN,
+  NOTE_NAMING_CONVENTIONS,
   formatMidiNote,
   formatMidiRange,
   sanitizeKeyboardConfig,
@@ -41,7 +42,7 @@ export function KeyboardRangeSetup({
 }: KeyboardRangeSetupProps) {
   const config = useMemo(
     () => sanitizeKeyboardConfig(value),
-    [value.preset, value.startMidi, value.endMidi],
+    [value.preset, value.startMidi, value.endMidi, value.noteNaming],
   )
   const [calibrationStep, setCalibrationStep] = useState<CalibrationStep>('idle')
   const [capturedLow, setCapturedLow] = useState<number | null>(null)
@@ -79,7 +80,7 @@ export function KeyboardRangeSetup({
       return
     }
     if (incoming <= capturedLow) {
-      setCalibrationError(`Play a key higher than ${formatMidiNote(capturedLow)}.`)
+      setCalibrationError(`Play a key higher than ${formatMidiNote(capturedLow, config.noteNaming)}.`)
       return
     }
 
@@ -87,11 +88,12 @@ export function KeyboardRangeSetup({
       preset: 'detected',
       startMidi: capturedLow,
       endMidi: incoming,
+      noteNaming: config.noteNaming,
     })
     setCalibrationStep('idle')
     setCapturedLow(null)
     setCalibrationError('')
-  }, [calibrationStep, capturedLow, lastMidiNote, onChange])
+  }, [calibrationStep, capturedLow, config.noteNaming, lastMidiNote, onChange])
 
   function choosePreset(index: number) {
     const preset = KEYBOARD_PRESETS[index]
@@ -99,6 +101,7 @@ export function KeyboardRangeSetup({
       preset: preset.preset,
       startMidi: preset.startMidi,
       endMidi: preset.endMidi,
+      noteNaming: preset.preset === 'yamaha-psr-e383' ? 'yamaha' : config.noteNaming,
     })
   }
 
@@ -111,6 +114,7 @@ export function KeyboardRangeSetup({
       preset: 'custom',
       startMidi,
       endMidi: config.endMidi,
+      noteNaming: config.noteNaming,
     })
   }
 
@@ -119,7 +123,12 @@ export function KeyboardRangeSetup({
       preset: 'custom',
       startMidi: config.startMidi,
       endMidi,
+      noteNaming: config.noteNaming,
     })
+  }
+
+  function changeNoteNaming(noteNaming: KeyboardConfig['noteNaming']) {
+    onChange({ ...config, noteNaming })
   }
 
   function beginCalibration() {
@@ -149,7 +158,7 @@ export function KeyboardRangeSetup({
           <strong id="keyboard-range-title">Keyboard range</strong>
         </span>
         <output>
-          {config.preset === 'auto' ? 'Song focus' : `${keyCount} keys · ${formatMidiRange(config.startMidi, config.endMidi)}`}
+          {config.preset === 'auto' ? 'Song focus' : `${keyCount} keys · ${formatMidiRange(config.startMidi, config.endMidi, config.noteNaming)}`}
         </output>
       </header>
 
@@ -169,7 +178,11 @@ export function KeyboardRangeSetup({
                 <span className="keyboard-range-preset__indicator">{selected && <Check size={13} />}</span>
                 <span className="keyboard-range-preset__copy">
                   <strong>{preset.label}</strong>
-                  <small>{preset.description}</small>
+                  <small>
+                    {preset.keyCount
+                      ? `${formatMidiRange(preset.startMidi, preset.endMidi, config.noteNaming)} · ${preset.description}`
+                      : preset.description}
+                  </small>
                 </span>
                 {preset.recommended && <span className="keyboard-range-preset__tag">Recommended</span>}
                 {preset.keyCount && <span className="keyboard-range-preset__count">{preset.keyCount}</span>}
@@ -189,7 +202,7 @@ export function KeyboardRangeSetup({
               <span className="keyboard-range-preset__indicator">{manualSelected && <Check size={13} />}</span>
               <span>
                 <strong>{config.preset === 'detected' ? 'Detected range' : 'Custom range'}</strong>
-                <small>{manualSelected ? `${keyCount} keys · ${formatMidiRange(config.startMidi, config.endMidi)}` : 'Choose exact first and last notes'}</small>
+                <small>{manualSelected ? `${keyCount} keys · ${formatMidiRange(config.startMidi, config.endMidi, config.noteNaming)}` : 'Choose exact first and last notes'}</small>
               </span>
             </button>
 
@@ -201,7 +214,7 @@ export function KeyboardRangeSetup({
                   onChange={(event) => changeLow(Number(event.target.value))}
                 >
                   {NOTE_OPTIONS.filter((midi) => midi <= config.endMidi).map((midi) => (
-                    <option key={midi} value={midi}>{formatMidiNote(midi)} · {midi}</option>
+                    <option key={midi} value={midi}>{formatMidiNote(midi, config.noteNaming)} · MIDI {midi}</option>
                   ))}
                 </select>
               </label>
@@ -213,11 +226,37 @@ export function KeyboardRangeSetup({
                   onChange={(event) => changeHigh(Number(event.target.value))}
                 >
                   {NOTE_OPTIONS.filter((midi) => midi >= config.startMidi).map((midi) => (
-                    <option key={midi} value={midi}>{formatMidiNote(midi)} · {midi}</option>
+                    <option key={midi} value={midi}>{formatMidiNote(midi, config.noteNaming)} · MIDI {midi}</option>
                   ))}
                 </select>
               </label>
             </div>
+          </div>
+
+          <div className="keyboard-note-naming">
+            <div className="keyboard-note-naming__heading">
+              <span><small>Note labels</small><strong>Octave numbering</strong></span>
+              <output>MIDI 60 = {formatMidiNote(60, config.noteNaming)}</output>
+            </div>
+            <div className="keyboard-note-naming__options" role="radiogroup" aria-label="Note octave naming">
+              {NOTE_NAMING_CONVENTIONS.map((convention) => {
+                const selected = convention.id === config.noteNaming
+                return (
+                  <button
+                    key={convention.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={selected ? 'is-selected' : ''}
+                    onClick={() => changeNoteNaming(convention.id)}
+                  >
+                    <span className="keyboard-note-naming__radio">{selected && <Check size={11} />}</span>
+                    <span><strong>{convention.label}</strong><small>{convention.description}</small></span>
+                  </button>
+                )
+              })}
+            </div>
+            <p>{NOTE_NAMING_CONVENTIONS.find((convention) => convention.id === config.noteNaming)?.detail}. Labels change; MIDI pitches do not.</p>
           </div>
 
           <div className={`keyboard-range-calibration${activeCalibration ? ' is-listening' : ''}`} aria-live="polite">
@@ -234,7 +273,7 @@ export function KeyboardRangeSetup({
                   <p>
                     {calibrationStep === 'lowest'
                       ? 'Press it once and release.'
-                      : `${formatMidiNote(capturedLow ?? config.startMidi)} captured as the low end.`}
+                      : `${formatMidiNote(capturedLow ?? config.startMidi, config.noteNaming)} captured as the low end.`}
                   </p>
                   {calibrationError && <em>{calibrationError}</em>}
                 </div>
@@ -264,4 +303,3 @@ export function KeyboardRangeSetup({
 }
 
 export default KeyboardRangeSetup
-

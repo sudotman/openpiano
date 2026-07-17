@@ -5,11 +5,11 @@ import {
   ChevronRight,
   Circle,
   Clock3,
-  LockKeyhole,
   Play,
   Sparkles,
 } from 'lucide-react'
 import { courseUnits, lessons } from '../data/curriculum'
+import { getLessonPathState } from '../lib/lessonPath'
 import type { Lesson } from '../types'
 
 interface LearnViewProps {
@@ -18,15 +18,6 @@ interface LearnViewProps {
   averageAccuracy?: number
   onOpenLesson: (lesson: Lesson) => void
   onResume: () => void
-}
-
-function lessonState(lesson: Lesson, completedLessonIds: string[], index: number) {
-  if (completedLessonIds.includes(lesson.id)) return 'done'
-  const previous = lessons[index - 1]
-  if (index === 0 || (previous && completedLessonIds.includes(previous.id))) return 'current'
-  // Keep the first unit open in the demo so the path is useful immediately.
-  if (lesson.unitId === courseUnits[0]?.id) return 'available'
-  return 'locked'
 }
 
 export function LearnView({ completedLessonIds, practiceMinutes = 0, averageAccuracy = 0, onOpenLesson, onResume }: LearnViewProps) {
@@ -75,6 +66,7 @@ export function LearnView({ completedLessonIds, practiceMinutes = 0, averageAccu
         <div className="overview-copy">
           <span>Full curriculum</span>
           <h3>Your path from first note to fluent playing</h3>
+          <p>Follow the recommended sequence or open any lesson; progress is tracked either way.</p>
         </div>
         <div className="overview-stats">
           <div><strong>{completed}<small> / {total}</small></strong><span>lessons complete</span></div>
@@ -111,20 +103,19 @@ export function LearnView({ completedLessonIds, practiceMinutes = 0, averageAccu
                 </div>
                 <div className="lesson-list">
                   {unitLessons.map((lesson) => {
-                    const globalIndex = lessons.findIndex((item) => item.id === lesson.id)
-                    const state = lessonState(lesson, completedLessonIds, globalIndex)
+                    const state = getLessonPathState(lesson, completedLessonIds, nextLesson?.id)
                     return (
                       <button
                         key={lesson.id}
                         className={`lesson-row ${state}`}
-                        onClick={() => state !== 'locked' && onOpenLesson(lesson)}
-                        disabled={state === 'locked'}
+                        onClick={() => onOpenLesson(lesson)}
+                        aria-current={state === 'current' ? 'step' : undefined}
+                        aria-label={`${lesson.title}, ${state === 'done' ? 'completed' : state === 'current' ? 'recommended next' : 'available for self-directed study'}, ${lesson.durationMinutes} minutes`}
                       >
                         <span className="lesson-state">
                           {state === 'done' && <Check size={15} />}
                           {state === 'current' && <Play size={13} fill="currentColor" />}
                           {state === 'available' && <Circle size={10} />}
-                          {state === 'locked' && <LockKeyhole size={14} />}
                         </span>
                         <span className="lesson-name">
                           <strong>{lesson.title}</strong>

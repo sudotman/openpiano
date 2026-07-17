@@ -28,6 +28,11 @@ describe("piano MIDI ranges and note names", () => {
     ]).toEqual(["C-1", "A0", "C4", "C♯4", "A4", "C8", "G9"]);
   });
 
+  it("can mirror Yamaha's octave labels without changing the MIDI pitch", () => {
+    expect(getMidiNoteName(60, "yamaha")).toBe("C3");
+    expect(getMidiNoteName(72, "yamaha")).toBe("C4");
+  });
+
   it("identifies the five black-key pitch classes in every octave", () => {
     expect(Array.from({ length: 12 }, (_, midi) => isBlackMidi(midi))).toEqual([
       false,

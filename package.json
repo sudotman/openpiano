@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:restart": "vite --force",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run --pool=forks --maxWorkers=1"
   },
   "dependencies": {
     "@tonejs/midi": "^2.0.28",

@@ -346,6 +346,7 @@ export function PracticeStudio({
             wrongNotes={wrongMidis}
             startMidi={startMidi}
             endMidi={endMidi}
+            noteNaming={keyboardConfig.noteNaming}
             onNoteOn={midi.virtualNoteOn}
             onNoteOff={midi.virtualNoteOff}
             compact

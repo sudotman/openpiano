@@ -9,11 +9,13 @@ import {
   type PointerEvent,
 } from "react";
 
+import {
+  formatMidiNote,
+  type NoteNamingConvention,
+} from "../lib/keyboardConfig";
 import "./practice.css";
 
 const BLACK_PITCH_CLASSES = new Set([1, 3, 6, 8, 10]);
-const PITCH_NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
-
 export interface PianoKeyboardProps {
   activeNotes: Set<number>;
   targetNotes?: Set<number>;
@@ -23,6 +25,7 @@ export interface PianoKeyboardProps {
   endMidi?: number;
   onNoteOn?: (midi: number) => void;
   onNoteOff?: (midi: number) => void;
+  noteNaming?: NoteNamingConvention;
   compact?: boolean;
 }
 
@@ -51,10 +54,11 @@ export function isBlackMidi(midi: number) {
   return BLACK_PITCH_CLASSES.has(((midi % 12) + 12) % 12);
 }
 
-export function getMidiNoteName(midi: number) {
-  const pitchClass = ((midi % 12) + 12) % 12;
-  const octave = Math.floor(midi / 12) - 1;
-  return `${PITCH_NAMES[pitchClass]}${octave}`;
+export function getMidiNoteName(
+  midi: number,
+  convention: NoteNamingConvention = "scientific",
+) {
+  return formatMidiNote(midi, convention);
 }
 
 /**
@@ -100,6 +104,7 @@ export function PianoKeyboard({
   endMidi = 108,
   onNoteOn,
   onNoteOff,
+  noteNaming = "scientific",
   compact = false,
 }: PianoKeyboardProps) {
   const [rangeStart, rangeEnd] = getMidiRange(startMidi, endMidi);
@@ -235,9 +240,9 @@ export function PianoKeyboard({
       <div className="piano-keyboard__rail" aria-hidden="true">
         <span className="piano-keyboard__rail-mark" />
         <span className="piano-keyboard__range">
-          {getMidiNoteName(rangeStart)}
+          {getMidiNoteName(rangeStart, noteNaming)}
           <span className="piano-keyboard__range-line" />
-          {getMidiNoteName(rangeEnd)}
+          {getMidiNoteName(rangeEnd, noteNaming)}
         </span>
       </div>
 
@@ -248,7 +253,7 @@ export function PianoKeyboard({
           const target = targetNotes?.has(midi) ?? false;
           const correct = correctNotes?.has(midi) ?? false;
           const wrong = !correct && (wrongNotes?.has(midi) ?? false);
-          const noteName = getMidiNoteName(midi);
+          const noteName = getMidiNoteName(midi, noteNaming);
           const isC = midi % 12 === 0;
           const stateDescription = [
             pressed && "pressed",
@@ -291,7 +296,7 @@ export function PianoKeyboard({
             >
               {isC && !isBlack ? (
                 <span className="piano-keyboard__note-label" aria-hidden="true">
-                  C<small>{Math.floor(midi / 12) - 1}</small>
+                  C<small>{noteName.slice(1)}</small>
                 </span>
               ) : null}
               <span className="piano-keyboard__key-shine" aria-hidden="true" />

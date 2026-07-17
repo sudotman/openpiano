@@ -15,6 +15,10 @@ import {
 
 import type { Song, SongNote } from "../types";
 import {
+  formatMidiNote,
+  type NoteNamingConvention,
+} from "../lib/keyboardConfig";
+import {
   buildMeasureRhythm,
   getChordSymbol,
   getMeasureBeats,
@@ -24,7 +28,6 @@ import {
   getNotationPage,
   groupNotesIntoMeasures,
   keyPrefersFlats,
-  midiToNoteName,
   midiToVexKey,
   parseTimeSignature,
   toVexKeySignature,
@@ -49,6 +52,7 @@ export interface SingleNoteStaffProps {
   midi: number;
   clef?: NotationClef;
   label?: string;
+  noteNaming?: NoteNamingConvention;
   compact?: boolean;
 }
 
@@ -764,6 +768,7 @@ export function SingleNoteStaff({
   midi,
   clef,
   label,
+  noteNaming = "scientific",
   compact = false,
 }: SingleNoteStaffProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -774,7 +779,7 @@ export function SingleNoteStaff({
     Math.max(0, Math.round(Number.isFinite(midi) ? midi : 60)),
   );
   const resolvedClef = clef ?? (safeMidi < 60 ? "bass" : "treble");
-  const noteName = midiToNoteName(safeMidi);
+  const noteName = formatMidiNote(safeMidi, noteNaming);
 
   useEffect(() => {
     const host = hostRef.current;

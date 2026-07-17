@@ -10,14 +10,27 @@ export type KeyboardPresetId =
   | 'custom'
   | 'detected'
 
-/** Persistable keyboard-range preference. All endpoints are inclusive. */
-export interface KeyboardConfig {
+/**
+ * Octave numbers are display conventions, not MIDI pitch data. Scientific
+ * pitch names MIDI 60 as C4; the PSR-E383 manual names the same key C3.
+ */
+export type NoteNamingConvention = 'scientific' | 'yamaha'
+
+export interface KeyboardRangeConfig {
   preset: KeyboardPresetId
   startMidi: number
   endMidi: number
 }
 
-export interface KeyboardPreset extends KeyboardConfig {
+/** Persistable keyboard-range preference. All endpoints are inclusive. */
+export interface KeyboardConfig extends KeyboardRangeConfig {
+  noteNaming: NoteNamingConvention
+}
+
+/** Accepts profiles saved before octave-label preferences were introduced. */
+export type KeyboardConfigInput = KeyboardRangeConfig & Partial<Pick<KeyboardConfig, 'noteNaming'>>
+
+export interface KeyboardPreset extends KeyboardRangeConfig {
   label: string
   description: string
   keyCount?: number
@@ -28,10 +41,32 @@ export type MidiNoteLike = number | { midi: number }
 
 const PITCH_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'] as const
 
+export const DEFAULT_NOTE_NAMING_CONVENTION: NoteNamingConvention = 'yamaha'
+
+export const NOTE_NAMING_CONVENTIONS = Object.freeze([
+  {
+    id: 'scientific',
+    label: 'Scientific',
+    description: 'Middle C = C4',
+    detail: 'Common in music education and notation software',
+  },
+  {
+    id: 'yamaha',
+    label: 'Yamaha PSR',
+    description: 'Middle C = C3',
+    detail: 'Matches the PSR-E383 screen and manuals',
+  },
+] as const satisfies readonly {
+  id: NoteNamingConvention
+  label: string
+  description: string
+  detail: string
+}[])
+
 export const YAMAHA_PSR_E383_PRESET = Object.freeze({
   preset: 'yamaha-psr-e383',
   label: 'Yamaha PSR-E383',
-  description: '61 keys · C2–C7',
+  description: '61-key touch-sensitive keybed',
   startMidi: 36,
   endMidi: 96,
   keyCount: 61,
@@ -41,7 +76,7 @@ export const YAMAHA_PSR_E383_PRESET = Object.freeze({
 export const KEYBOARD_49_PRESET = Object.freeze({
   preset: '49-key',
   label: '49-key keyboard',
-  description: 'C2–C6',
+  description: 'Compact controller range',
   startMidi: 36,
   endMidi: 84,
   keyCount: 49,
@@ -50,7 +85,7 @@ export const KEYBOARD_49_PRESET = Object.freeze({
 export const KEYBOARD_76_PRESET = Object.freeze({
   preset: '76-key',
   label: '76-key keyboard',
-  description: 'E1–G7',
+  description: 'Extended keyboard range',
   startMidi: 28,
   endMidi: 103,
   keyCount: 76,
@@ -59,7 +94,7 @@ export const KEYBOARD_76_PRESET = Object.freeze({
 export const FULL_PIANO_88_PRESET = Object.freeze({
   preset: '88-key',
   label: 'Full piano',
-  description: '88 keys · A0–C8',
+  description: 'Full acoustic-piano range',
   startMidi: 21,
   endMidi: 108,
   keyCount: 88,
@@ -87,6 +122,7 @@ export const DEFAULT_KEYBOARD_CONFIG: Readonly<KeyboardConfig> = Object.freeze({
   preset: YAMAHA_PSR_E383_PRESET.preset,
   startMidi: YAMAHA_PSR_E383_PRESET.startMidi,
   endMidi: YAMAHA_PSR_E383_PRESET.endMidi,
+  noteNaming: DEFAULT_NOTE_NAMING_CONVENTION,
 })
 
 const PRESET_IDS = new Set<KeyboardPresetId>([
@@ -94,6 +130,10 @@ const PRESET_IDS = new Set<KeyboardPresetId>([
   'custom',
   'detected',
 ])
+
+const NOTE_NAMING_IDS = new Set<NoteNamingConvention>(
+  NOTE_NAMING_CONVENTIONS.map((convention) => convention.id),
+)
 
 function clampMidi(value: number) {
   return Math.max(MIDI_NOTE_MIN, Math.min(MIDI_NOTE_MAX, Math.round(value)))
@@ -108,24 +148,32 @@ function getPresetFallback(preset: KeyboardPresetId) {
   return KEYBOARD_PRESETS.find((candidate) => candidate.preset === preset) ?? YAMAHA_PSR_E383_PRESET
 }
 
-/** Formats a MIDI number using scientific pitch notation (middle C is C4). */
-export function formatMidiNote(midi: number) {
+/** Formats a MIDI number without changing its pitch or MIDI identity. */
+export function formatMidiNote(
+  midi: number,
+  convention: NoteNamingConvention = DEFAULT_NOTE_NAMING_CONVENTION,
+) {
   if (!Number.isFinite(midi)) return '—'
   const normalized = clampMidi(midi)
   const pitchClass = normalized % 12
-  const octave = Math.floor(normalized / 12) - 1
+  const octaveOffset = convention === 'yamaha' ? -2 : -1
+  const octave = Math.floor(normalized / 12) + octaveOffset
   return `${PITCH_NAMES[pitchClass]}${octave}`
 }
 
 /** Alias for call sites that read more naturally with a getter-style name. */
 export const getMidiNoteName = formatMidiNote
 
-export function formatMidiRange(startMidi: number, endMidi: number) {
-  return `${formatMidiNote(startMidi)}–${formatMidiNote(endMidi)}`
+export function formatMidiRange(
+  startMidi: number,
+  endMidi: number,
+  convention: NoteNamingConvention = DEFAULT_NOTE_NAMING_CONVENTION,
+) {
+  return `${formatMidiNote(startMidi, convention)}–${formatMidiNote(endMidi, convention)}`
 }
 
 /** A concise, derived label for settings and learning surfaces. */
-export function getKeyboardConfigLabel(config: KeyboardConfig) {
+export function getKeyboardConfigLabel(config: KeyboardConfigInput) {
   const safeConfig = sanitizeKeyboardConfig(config)
   const preset = KEYBOARD_PRESETS.find((candidate) => candidate.preset === safeConfig.preset)
   if (preset) return preset.label
@@ -148,11 +196,16 @@ export function sanitizeKeyboardConfig(
   const fallback = getPresetFallback(preset)
   const first = normalizeMidi(config?.startMidi, fallback.startMidi)
   const second = normalizeMidi(config?.endMidi, fallback.endMidi)
+  const requestedNoteNaming = config?.noteNaming
+  const noteNaming = requestedNoteNaming && NOTE_NAMING_IDS.has(requestedNoteNaming)
+    ? requestedNoteNaming
+    : DEFAULT_NOTE_NAMING_CONVENTION
 
   return {
     preset,
     startMidi: Math.min(first, second),
     endMidi: Math.max(first, second),
+    noteNaming,
   }
 }
 
@@ -168,7 +221,7 @@ function readMidi(note: MidiNoteLike) {
  */
 export function resolvePracticeRange(
   notes: readonly MidiNoteLike[] | null | undefined,
-  config: KeyboardConfig,
+  config: KeyboardConfigInput,
 ): [number, number] {
   const safeConfig = sanitizeKeyboardConfig(config)
   if (safeConfig.preset !== 'auto') {
