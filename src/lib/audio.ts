@@ -6,6 +6,7 @@ interface Voice {
   velocity: number;
   envelope: GainNode;
   oscillators: OscillatorNode[];
+  cleanupNodes: AudioNode[];
   released: boolean;
   startedAt: number;
 }
@@ -62,6 +63,24 @@ function holdAudioParam(param: AudioParam, time: number): void {
   param.setValueAtTime(value, time);
 }
 
+function createRoomImpulse(context: AudioContext): AudioBuffer {
+  const length = Math.round(context.sampleRate * 1.15);
+  const impulse = context.createBuffer(2, length, context.sampleRate);
+
+  for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
+    const data = impulse.getChannelData(channel);
+    let seed = 17_171 + channel * 7_919;
+    for (let index = 0; index < length; index += 1) {
+      seed = Math.imul(seed, 48_271) >>> 0;
+      const noise = (seed / 4_294_967_295) * 2 - 1;
+      const progress = index / length;
+      data[index] = noise * Math.exp(-5.8 * progress) * (1 - progress) * 0.42;
+    }
+  }
+
+  return impulse;
+}
+
 /** Convert a MIDI note number to equal-tempered frequency (A4 = 440 Hz). */
 export function midiToFrequency(note: number): number {
   return 440 * 2 ** ((note - 69) / 12);
@@ -76,6 +95,11 @@ export class PianoSynth {
   private context: AudioContext | null;
   private master: GainNode | null = null;
   private compressor: DynamicsCompressorNode | null = null;
+  private dryGain: GainNode | null = null;
+  private reverb: ConvolverNode | null = null;
+  private reverbFilter: BiquadFilterNode | null = null;
+  private reverbGain: GainNode | null = null;
+  private hammerBuffer: AudioBuffer | null = null;
   private readonly ownsContext: boolean;
   private readonly maxPolyphony: number;
   private readonly voices = new Map<number, Voice>();
@@ -169,27 +193,36 @@ export class PianoSynth {
 
     const startedAt = context.currentTime;
     const fundamental = midiToFrequency(note);
+    const keyboardPosition = clamp((note - 21) / 87, 0, 1);
     const envelope = context.createGain();
     const filter = context.createBiquadFilter();
+    const panner = context.createStereoPanner();
     filter.type = "lowpass";
     filter.frequency.setValueAtTime(
-      Math.min(10_000, Math.max(1_800, fundamental * 7)),
+      clamp(2_100 + velocity ** 1.5 * 8_400 + fundamental * 2.2, 2_200, 12_500),
       startedAt,
     );
-    filter.Q.setValueAtTime(0.55, startedAt);
+    filter.Q.setValueAtTime(0.42, startedAt);
+    panner.pan.setValueAtTime(clamp((note - 64) / 58, -0.52, 0.52), startedAt);
     envelope.connect(filter);
-    filter.connect(this.master);
+    filter.connect(panner);
+    panner.connect(this.master);
 
-    const peak = 0.075 + 0.64 * velocity ** 1.35;
+    const peak = 0.16 + 0.54 * velocity ** 1.2;
+    const bodyDecay = 8.4 - keyboardPosition * 4.8 + velocity * 1.15;
     envelope.gain.setValueAtTime(MIN_GAIN, startedAt);
-    envelope.gain.linearRampToValueAtTime(peak, startedAt + 0.008);
+    envelope.gain.linearRampToValueAtTime(peak, startedAt + 0.0045);
     envelope.gain.exponentialRampToValueAtTime(
-      Math.max(MIN_GAIN, peak * 0.46),
-      startedAt + 0.2,
+      Math.max(MIN_GAIN, peak * 0.78),
+      startedAt + 0.065,
     );
     envelope.gain.exponentialRampToValueAtTime(
-      Math.max(MIN_GAIN, peak * 0.12),
-      startedAt + 4.2,
+      Math.max(MIN_GAIN, peak * 0.4),
+      startedAt + 0.85,
+    );
+    envelope.gain.exponentialRampToValueAtTime(
+      Math.max(MIN_GAIN, peak * 0.075),
+      startedAt + bodyDecay,
     );
     envelope.gain.exponentialRampToValueAtTime(
       MIN_GAIN,
@@ -197,17 +230,17 @@ export class PianoSynth {
     );
 
     const oscillators: OscillatorNode[] = [];
-    const partials: Array<{
-      ratio: number;
-      level: number;
-      type: OscillatorType;
-      detune?: number;
-    }> = [
-      { ratio: 1, level: 0.72, type: "triangle" },
-      { ratio: 1, level: 0.2, type: "sine", detune: 3.5 },
-      { ratio: 2, level: 0.18, type: "sine" },
-      { ratio: 3, level: 0.07, type: "sine" },
-    ];
+    const cleanupNodes: AudioNode[] = [envelope, filter, panner];
+    const harmonicLevels = [1, 0.44, 0.24, 0.145, 0.09, 0.052, 0.03];
+    const inharmonicity = 0.000055 + keyboardPosition ** 1.7 * 0.00031;
+    const partials = harmonicLevels.map((level, index) => {
+      const harmonic = index + 1;
+      return {
+        harmonic,
+        ratio: harmonic * Math.sqrt(1 + inharmonicity * harmonic ** 2),
+        level: level * (harmonic === 1 ? 1 : 0.44 + velocity * 0.72),
+      };
+    });
 
     for (const partial of partials) {
       const partialFrequency = fundamental * partial.ratio;
@@ -215,16 +248,58 @@ export class PianoSynth {
 
       const oscillator = context.createOscillator();
       const partialGain = context.createGain();
-      oscillator.type = partial.type;
+      const partialDecay = clamp(bodyDecay / (0.66 + partial.harmonic * 0.27), 0.42, bodyDecay);
+      oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(partialFrequency, startedAt);
-      oscillator.detune.setValueAtTime(partial.detune ?? 0, startedAt);
-      partialGain.gain.setValueAtTime(partial.level, startedAt);
+      oscillator.detune.setValueAtTime(((note + partial.harmonic) % 3 - 1) * 0.28, startedAt);
+      partialGain.gain.setValueAtTime(MIN_GAIN, startedAt);
+      partialGain.gain.linearRampToValueAtTime(partial.level, startedAt + 0.0035 + partial.harmonic * 0.00035);
+      partialGain.gain.exponentialRampToValueAtTime(
+        Math.max(MIN_GAIN, partial.level * 0.64),
+        startedAt + 0.055,
+      );
+      partialGain.gain.exponentialRampToValueAtTime(MIN_GAIN, startedAt + partialDecay);
       oscillator.connect(partialGain);
       partialGain.connect(envelope);
       oscillator.start(startedAt);
       oscillator.stop(startedAt + MAX_VOICE_SECONDS + 0.05);
       oscillators.push(oscillator);
+      cleanupNodes.push(oscillator, partialGain);
     }
+
+    if (note >= 40 && fundamental < context.sampleRate / 4) {
+      const stringSpread = 0.46 + keyboardPosition * 0.62;
+      for (const direction of [-1, 1]) {
+        const string = context.createOscillator();
+        const stringGain = context.createGain();
+        string.type = "sine";
+        string.frequency.setValueAtTime(fundamental, startedAt);
+        string.detune.setValueAtTime(direction * stringSpread, startedAt);
+        stringGain.gain.setValueAtTime(MIN_GAIN, startedAt);
+        stringGain.gain.linearRampToValueAtTime(0.12, startedAt + 0.005);
+        stringGain.gain.exponentialRampToValueAtTime(MIN_GAIN, startedAt + bodyDecay * 0.9);
+        string.connect(stringGain);
+        stringGain.connect(envelope);
+        string.start(startedAt);
+        string.stop(startedAt + MAX_VOICE_SECONDS + 0.05);
+        oscillators.push(string);
+        cleanupNodes.push(string, stringGain);
+      }
+    }
+
+    const hammer = context.createBufferSource();
+    const hammerFilter = context.createBiquadFilter();
+    const hammerGain = context.createGain();
+    hammer.buffer = this.hammerBuffer;
+    hammerFilter.type = "bandpass";
+    hammerFilter.frequency.setValueAtTime(clamp(fundamental * 7.5, 1_700, 7_800), startedAt);
+    hammerFilter.Q.setValueAtTime(0.72, startedAt);
+    hammerGain.gain.setValueAtTime(0.025 + velocity ** 2 * 0.16, startedAt);
+    hammer.connect(hammerFilter);
+    hammerFilter.connect(hammerGain);
+    hammerGain.connect(envelope);
+    hammer.start(startedAt);
+    cleanupNodes.push(hammer, hammerFilter, hammerGain);
 
     if (oscillators.length === 0) {
       envelope.disconnect();
@@ -237,6 +312,7 @@ export class PianoSynth {
       velocity,
       envelope,
       oscillators,
+      cleanupNodes,
       released: false,
       startedAt,
     };
@@ -246,8 +322,7 @@ export class PianoSynth {
       "ended",
       () => {
         if (this.voices.get(note) === voice) this.voices.delete(note);
-        envelope.disconnect();
-        filter.disconnect();
+        voice.cleanupNodes.forEach((node) => node.disconnect());
       },
       { once: true },
     );
@@ -291,8 +366,17 @@ export class PianoSynth {
 
     this.master?.disconnect();
     this.compressor?.disconnect();
+    this.dryGain?.disconnect();
+    this.reverb?.disconnect();
+    this.reverbFilter?.disconnect();
+    this.reverbGain?.disconnect();
     this.master = null;
     this.compressor = null;
+    this.dryGain = null;
+    this.reverb = null;
+    this.reverbFilter = null;
+    this.reverbGain = null;
+    this.hammerBuffer = null;
     this.voices.clear();
 
     if (this.ownsContext && this.context?.state !== "closed") {
@@ -308,6 +392,11 @@ export class PianoSynth {
       this.context = null;
       this.master = null;
       this.compressor = null;
+      this.dryGain = null;
+      this.reverb = null;
+      this.reverbFilter = null;
+      this.reverbGain = null;
+      this.hammerBuffer = null;
     }
 
     if (!this.context) {
@@ -323,16 +412,44 @@ export class PianoSynth {
   private createOutputGraph(context: AudioContext): void {
     const master = context.createGain();
     const compressor = context.createDynamicsCompressor();
+    const dryGain = context.createGain();
+    const reverb = context.createConvolver();
+    const reverbFilter = context.createBiquadFilter();
+    const reverbGain = context.createGain();
+    const hammerLength = Math.max(1, Math.round(context.sampleRate * 0.032));
+    const hammerBuffer = context.createBuffer(1, hammerLength, context.sampleRate);
+    const hammerData = hammerBuffer.getChannelData(0);
+    let hammerSeed = 1_103;
+    for (let index = 0; index < hammerLength; index += 1) {
+      hammerSeed = Math.imul(hammerSeed, 16_807) >>> 0;
+      const noise = (hammerSeed / 4_294_967_295) * 2 - 1;
+      hammerData[index] = noise * (1 - index / hammerLength) ** 3;
+    }
     master.gain.setValueAtTime(this.volume, context.currentTime);
-    compressor.threshold.setValueAtTime(-14, context.currentTime);
-    compressor.knee.setValueAtTime(12, context.currentTime);
-    compressor.ratio.setValueAtTime(4, context.currentTime);
-    compressor.attack.setValueAtTime(0.003, context.currentTime);
-    compressor.release.setValueAtTime(0.22, context.currentTime);
-    master.connect(compressor);
+    dryGain.gain.setValueAtTime(0.94, context.currentTime);
+    reverb.buffer = createRoomImpulse(context);
+    reverbFilter.type = "lowpass";
+    reverbFilter.frequency.setValueAtTime(3_600, context.currentTime);
+    reverbGain.gain.setValueAtTime(0.115, context.currentTime);
+    compressor.threshold.setValueAtTime(-12, context.currentTime);
+    compressor.knee.setValueAtTime(10, context.currentTime);
+    compressor.ratio.setValueAtTime(3.2, context.currentTime);
+    compressor.attack.setValueAtTime(0.004, context.currentTime);
+    compressor.release.setValueAtTime(0.24, context.currentTime);
+    master.connect(dryGain);
+    dryGain.connect(compressor);
+    master.connect(reverb);
+    reverb.connect(reverbFilter);
+    reverbFilter.connect(reverbGain);
+    reverbGain.connect(compressor);
     compressor.connect(context.destination);
     this.master = master;
     this.compressor = compressor;
+    this.dryGain = dryGain;
+    this.reverb = reverb;
+    this.reverbFilter = reverbFilter;
+    this.reverbGain = reverbGain;
+    this.hammerBuffer = hammerBuffer;
   }
 
   private releaseVoice(voice: Voice, releaseSeconds: number): void {

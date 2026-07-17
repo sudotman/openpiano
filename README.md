@@ -14,7 +14,7 @@ OpenPiano is a browser-based piano teacher built around real MIDI input. It comb
 - **Flow mode**, with live timing, misses, accuracy, and streak scoring
 - Live Web MIDI note-on/note-off input, velocity tracking, hot-plug detection, remembered device selection, and automatic reconnection after the first approval
 - On-screen playable keys for trying every interaction without hardware
-- Piano-like Web Audio feedback with polyphony
+- A warmer modeled piano voice with hammer attack, inharmonic string partials, stereo keyboard placement, natural decay, and subtle room resonance
 - MIDI file import with track selection, metadata cleanup, hand inference, and clear validation errors
 - A Yamaha PSR-E383 preset (61 keys, Yamaha C1–C6), common 49/76/88-key presets, custom endpoints, two-note MIDI calibration, and selectable Yamaha C3 / Scientific C4 octave labels
 - Password-free local learner profiles with separate songs, lesson progress, settings, theory scores, practice history, switching, renaming, and non-destructive logout
@@ -90,7 +90,7 @@ The deployment uses GitHub's `github-pages` environment and official Pages artif
 
 - `src/hooks/useMidi.ts` — Web MIDI permissions, devices, and live note state
 - `src/lib/midiImport.ts` — safe MIDI parsing and OpenPiano song conversion
-- `src/lib/audio.ts` — lightweight polyphonic piano synth
+- `src/lib/audio.ts` — polyphonic modeled-piano synth and room response
 - `src/components/PracticeStudio.tsx` — track playback, metronome, tempo, wait/flow modes, scoring, and results
 - `src/components/NoteHighway.tsx` — aligned falling-note renderer
 - `src/components/PianoKeyboard.tsx` — accurate interactive key geometry

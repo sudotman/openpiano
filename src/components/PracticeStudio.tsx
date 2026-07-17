@@ -191,6 +191,15 @@ export function PracticeStudio({
   }, [song.id])
 
   useEffect(() => {
+    if (!settingsOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSettingsOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [settingsOpen])
+
+  useEffect(() => {
     if (!playing) return
     let frame = 0
     let previous = performance.now()
@@ -572,7 +581,7 @@ export function PracticeStudio({
               aria-pressed={metronomeEnabled}
               aria-label={metronomeEnabled ? 'Turn metronome off' : `Turn metronome on at ${effectiveBpm} BPM`}
             >
-              <Timer size={15} /> Click {metronomeEnabled ? 'on' : 'off'}
+              <Timer size={15} /> Metronome <small>{metronomeEnabled ? 'On' : 'Off'}</small>
             </button>
             <button
               className={backingTrack ? 'track-control active' : 'track-control'}
@@ -582,7 +591,7 @@ export function PracticeStudio({
               aria-label={backingTrack ? 'Turn backing track off' : 'Play the track alongside practice'}
             >
               {backingTrack || sessionKind === 'listen' ? <Volume2 size={15} /> : <VolumeX size={15} />}
-              {sessionKind === 'listen' ? 'Preview' : `Track ${backingTrack ? 'on' : 'off'}`}
+              Track <small>{sessionKind === 'listen' ? 'Preview' : backingTrack ? 'On' : 'Off'}</small>
             </button>
             <button className="speed-control" onClick={() => setSettingsOpen(true)} aria-label={`Tempo ${effectiveBpm} BPM, ${playbackPercent}% of original`}><Gauge size={15} /> {effectiveBpm} BPM <small>{playbackPercent}%</small></button>
           </div>
@@ -591,42 +600,53 @@ export function PracticeStudio({
 
       <AnimatePresence>
         {settingsOpen && (
-          <motion.aside className="practice-settings-popover" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-            <div className="settings-heading"><strong>Practice settings</strong><button onClick={() => setSettingsOpen(false)} aria-label="Close practice settings"><X size={15} /></button></div>
-            <section className="setting-block tempo-setting">
-              <div className="setting-label"><span>Playback tempo</span><strong>{effectiveBpm} BPM</strong></div>
-              <small>Original tempo: {originalBpm} BPM · Playing at {playbackPercent}%</small>
-              <div className="tempo-input-row">
-                <input aria-label="Playback tempo in BPM" type="range" min={tempoBounds.min} max={tempoBounds.max} step="1" value={effectiveBpm} onChange={(event) => setExactBpm(Number(event.target.value))} />
-                <label className="bpm-input"><input aria-label="Exact playback BPM" type="number" min={tempoBounds.min} max={tempoBounds.max} value={effectiveBpm} onChange={(event) => setExactBpm(Number(event.target.value))} /><span>BPM</span></label>
-              </div>
-              <div className="tempo-presets" aria-label="Tempo presets">
-                {[.5, .75, 1].map((preset) => <button key={preset} className={Math.abs(speed - preset) < .005 ? 'active' : ''} onClick={() => setSpeed(preset)}>{preset * 100}% <small>{playbackBpm(originalBpm, preset)} BPM</small></button>)}
-              </div>
-            </section>
-            <section className="setting-block">
-              <div className="setting-label"><span>Backing track</span><small>Hear the full arrangement while you play</small></div>
-              <div className="setting-choice" role="group" aria-label="Backing track">
-                <button className={!backingTrack ? 'active' : ''} onClick={() => setBackingTrack(false)}><VolumeX size={14} /> Off</button>
-                <button className={backingTrack ? 'active' : ''} onClick={() => setBackingTrack(true)}><Volume2 size={14} /> Play alongside</button>
-              </div>
-            </section>
-            <section className="setting-block">
-              <div className="setting-label"><span>Metronome</span><small>Steady click at {effectiveBpm} BPM</small></div>
-              <div className="setting-choice" role="group" aria-label="Metronome">
-                <button className={!metronomeEnabled ? 'active' : ''} onClick={() => setMetronomeEnabled(false)}>Off</button>
-                <button className={metronomeEnabled ? 'active' : ''} onClick={() => setMetronomeEnabled(true)}><Timer size={14} /> On</button>
-              </div>
-            </section>
-            <section className="setting-block">
-              <div className="setting-label"><span>Timeline mode</span><small>{mode === 'wait' ? 'Waits for each correct note' : 'Keeps moving in real time'}</small></div>
-              <div className="setting-choice" role="group" aria-label="Timeline mode">
-                <button className={mode === 'wait' ? 'active' : ''} onClick={() => setMode('wait')}>Wait</button>
-                <button className={mode === 'flow' ? 'active' : ''} onClick={() => setMode('flow')}>Flow</button>
-              </div>
-            </section>
-            <p>“Hear track first” previews the arrangement without scoring. Backing track plays it alongside your practice.</p>
-          </motion.aside>
+          <motion.div className="settings-layer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="settings-scrim" onClick={() => setSettingsOpen(false)} />
+            <motion.aside
+              className="practice-settings-popover"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="practice-settings-title"
+              initial={{ opacity: 0, x: 14, y: -5 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              exit={{ opacity: 0, x: 14, y: -5 }}
+            >
+              <div className="settings-heading"><strong id="practice-settings-title">Practice settings</strong><button onClick={() => setSettingsOpen(false)} aria-label="Close practice settings"><X size={16} /></button></div>
+              <section className="setting-block tempo-setting">
+                <div className="setting-label"><span>Playback tempo</span><strong>{effectiveBpm} BPM</strong></div>
+                <small>Original tempo: {originalBpm} BPM · Playing at {playbackPercent}%</small>
+                <div className="tempo-input-row">
+                  <input aria-label="Playback tempo in BPM" type="range" min={tempoBounds.min} max={tempoBounds.max} step="1" value={effectiveBpm} onChange={(event) => setExactBpm(Number(event.target.value))} />
+                  <label className="bpm-input"><input aria-label="Exact playback BPM" type="number" min={tempoBounds.min} max={tempoBounds.max} value={effectiveBpm} onChange={(event) => setExactBpm(Number(event.target.value))} /><span>BPM</span></label>
+                </div>
+                <div className="tempo-presets" aria-label="Tempo presets">
+                  {[.5, .75, 1].map((preset) => <button key={preset} className={Math.abs(speed - preset) < .005 ? 'active' : ''} onClick={() => setSpeed(preset)}>{preset * 100}% <small>{playbackBpm(originalBpm, preset)} BPM</small></button>)}
+                </div>
+              </section>
+              <section className="setting-block">
+                <div className="setting-label"><span>Backing track</span><small>Hear the full arrangement while you play</small></div>
+                <div className="setting-choice" role="group" aria-label="Backing track">
+                  <button className={!backingTrack ? 'active' : ''} onClick={() => setBackingTrack(false)}><VolumeX size={14} /> Off</button>
+                  <button className={backingTrack ? 'active' : ''} onClick={() => setBackingTrack(true)}><Volume2 size={14} /> Play alongside</button>
+                </div>
+              </section>
+              <section className="setting-block">
+                <div className="setting-label"><span>Metronome</span><small>Steady click at {effectiveBpm} BPM</small></div>
+                <div className="setting-choice" role="group" aria-label="Metronome">
+                  <button className={!metronomeEnabled ? 'active' : ''} onClick={() => setMetronomeEnabled(false)}>Off</button>
+                  <button className={metronomeEnabled ? 'active' : ''} onClick={() => setMetronomeEnabled(true)}><Timer size={14} /> On</button>
+                </div>
+              </section>
+              <section className="setting-block">
+                <div className="setting-label"><span>Timeline mode</span><small>{mode === 'wait' ? 'Waits for each correct note' : 'Keeps moving in real time'}</small></div>
+                <div className="setting-choice" role="group" aria-label="Timeline mode">
+                  <button className={mode === 'wait' ? 'active' : ''} onClick={() => setMode('wait')}>Wait</button>
+                  <button className={mode === 'flow' ? 'active' : ''} onClick={() => setMode('flow')}>Flow</button>
+                </div>
+              </section>
+              <p><Headphones size={13} /> “Hear track first” previews without scoring. Backing track plays the arrangement alongside you.</p>
+            </motion.aside>
+          </motion.div>
         )}
       </AnimatePresence>
 
