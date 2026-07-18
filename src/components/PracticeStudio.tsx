@@ -25,7 +25,13 @@ import type { UseMidiResult } from '../hooks/useMidi'
 import { createPianoSynth, type PianoSynth } from '../lib/audio'
 import { formatMidiNote, resolvePracticeRange, type KeyboardConfig } from '../lib/keyboardConfig'
 import { getPracticeCompletionAction, type PracticeTempoPercent } from '../lib/practiceSettings'
-import { playbackBpm, playbackBpmBounds, playbackRateForBpm } from '../lib/practicePlayback'
+import {
+  FLOW_COUNT_IN_BEATS,
+  flowCountInIntervalMs,
+  playbackBpm,
+  playbackBpmBounds,
+  playbackRateForBpm,
+} from '../lib/practicePlayback'
 import type { Lesson, Song, SongNote } from '../types'
 import { NoteHighway } from './NoteHighway'
 import { PianoKeyboard } from './PianoKeyboard'
@@ -99,6 +105,7 @@ export function PracticeStudio({
   const [bestStreak, setBestStreak] = useState(0)
   const [wrongCount, setWrongCount] = useState(0)
   const [feedback, setFeedback] = useState<{ kind: 'right' | 'wrong'; label: string } | null>(null)
+  const [countInBeat, setCountInBeat] = useState<number | null>(null)
   const [showResults, setShowResults] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(() => autoStart ? Date.now() : null)
@@ -110,6 +117,7 @@ export function PracticeStudio({
   const armedResultShortcutRef = useRef<{ note: number; action: 'repeat' | 'next' } | null>(null)
   const previousHandModeRef = useRef(handMode)
   const feedbackTimer = useRef<number | null>(null)
+  const countInTimerRef = useRef<number | null>(null)
   const trackSynthRef = useRef<PianoSynth | null>(null)
   const metronomeSynthRef = useRef<PianoSynth | null>(null)
   const trackReleaseTimersRef = useRef<Set<number>>(new Set())
@@ -131,6 +139,7 @@ export function PracticeStudio({
   const effectiveBpm = playbackBpm(originalBpm, speed)
   const playbackPercent = Math.round(speed * 100)
   const tempoBounds = playbackBpmBounds(originalBpm)
+  const countInInterval = flowCountInIntervalMs(effectiveBpm)
 
   useEffect(() => { hitRef.current = hitNotes }, [hitNotes])
   useEffect(() => { missedRef.current = missedNotes }, [missedNotes])
@@ -147,6 +156,36 @@ export function PracticeStudio({
     metronomeReleaseTimersRef.current.clear()
     metronomeSynthRef.current?.stopAll(.01)
   }, [])
+
+  const clearCountInTimer = useCallback(() => {
+    if (countInTimerRef.current !== null) window.clearTimeout(countInTimerRef.current)
+    countInTimerRef.current = null
+  }, [])
+
+  const cancelCountIn = useCallback(() => {
+    clearCountInTimer()
+    setCountInBeat(null)
+  }, [clearCountInTimer])
+
+  const startFlowCountIn = useCallback((onFinished: () => void) => {
+    clearCountInTimer()
+    let beat = FLOW_COUNT_IN_BEATS
+    setCountInBeat(beat)
+
+    const advance = () => {
+      beat -= 1
+      if (beat > 0) {
+        setCountInBeat(beat)
+        countInTimerRef.current = window.setTimeout(advance, countInInterval)
+        return
+      }
+      countInTimerRef.current = null
+      setCountInBeat(null)
+      onFinished()
+    }
+
+    countInTimerRef.current = window.setTimeout(advance, countInInterval)
+  }, [clearCountInTimer, countInInterval])
 
   useEffect(() => {
     const trackSynth = createPianoSynth({ volume: .24, maxPolyphony: 48 })
@@ -165,6 +204,7 @@ export function PracticeStudio({
   }, [silenceMetronome, silenceTrack])
 
   const clearSession = useCallback(() => {
+    cancelCountIn()
     silenceTrack()
     silenceMetronome()
     setPlaying(false)
@@ -185,16 +225,24 @@ export function PracticeStudio({
     lastTrackTimeRef.current = 0
     trackWasPlayingRef.current = false
     trackNextNoteIndexRef.current = 0
-  }, [silenceMetronome, silenceTrack])
+  }, [cancelCountIn, silenceMetronome, silenceTrack])
+
+  const startPracticeClock = useCallback(() => {
+    setSessionStartedAt(Date.now())
+    setPlaying(true)
+  }, [])
+
+  const beginPracticePlayback = useCallback(() => {
+    setSessionKind('practice')
+    if (mode === 'flow') startFlowCountIn(startPracticeClock)
+    else startPracticeClock()
+  }, [mode, startFlowCountIn, startPracticeClock])
 
   const restart = useCallback((startImmediately = false) => {
     clearSession()
-    setSessionKind('practice')
-    if (startImmediately) {
-      setSessionStartedAt(Date.now())
-      setPlaying(true)
-    }
-  }, [clearSession])
+    if (startImmediately) beginPracticePlayback()
+    else setSessionKind('practice')
+  }, [beginPracticePlayback, clearSession])
 
   useEffect(() => {
     if (previousHandModeRef.current === handMode) return
@@ -214,6 +262,8 @@ export function PracticeStudio({
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [settingsOpen])
+
+  useEffect(() => () => clearCountInTimer(), [clearCountInTimer])
 
   useEffect(() => {
     if (!playing) return
@@ -435,9 +485,7 @@ export function PracticeStudio({
   async function startPractice() {
     await resumePlaybackAudio()
     clearSession()
-    setSessionKind('practice')
-    setSessionStartedAt(Date.now())
-    setPlaying(true)
+    beginPracticePlayback()
   }
 
   async function listenToTrack() {
@@ -449,17 +497,42 @@ export function PracticeStudio({
 
   async function togglePlay() {
     await resumePlaybackAudio()
+    if (countInBeat !== null) {
+      cancelCountIn()
+      return
+    }
+    if (playing) {
+      setPlaying(false)
+      return
+    }
     if (currentTime >= song.duration) {
+      const previousSessionKind = sessionKind
       clearSession()
-      if (sessionKind === 'practice') setSessionStartedAt(Date.now())
-    } else if (sessionKind === 'practice' && !sessionStartedAt) {
+      if (previousSessionKind === 'practice') beginPracticePlayback()
+      else {
+        setSessionKind('listen')
+        setPlaying(true)
+      }
+      return
+    }
+    if (sessionKind === 'practice' && currentTime === 0 && mode === 'flow') {
+      clearSession()
+      beginPracticePlayback()
+      return
+    }
+    if (sessionKind === 'practice' && !sessionStartedAt) {
       setSessionStartedAt(Date.now())
     }
-    setPlaying((current) => !current)
+    setPlaying(true)
   }
 
   function setExactBpm(bpm: number) {
     setSpeed(playbackRateForBpm(originalBpm, bpm))
+  }
+
+  function chooseMode(nextMode: PracticeMode) {
+    if (nextMode !== 'flow') cancelCountIn()
+    setMode(nextMode)
   }
 
   function finishSession() {
@@ -526,8 +599,8 @@ export function PracticeStudio({
       <main className="studio-stage">
         <div className="studio-toolbar">
           <div className="segmented-control">
-            <button className={mode === 'wait' ? 'active' : ''} onClick={() => setMode('wait')}>Wait mode</button>
-            <button className={mode === 'flow' ? 'active' : ''} onClick={() => setMode('flow')}>Flow mode</button>
+            <button className={mode === 'wait' ? 'active' : ''} onClick={() => chooseMode('wait')}>Wait mode</button>
+            <button className={mode === 'flow' ? 'active' : ''} onClick={() => chooseMode('flow')}>Flow mode</button>
           </div>
           <div className="studio-live-stats">
             {sessionKind === 'listen' ? (
@@ -584,7 +657,24 @@ export function PracticeStudio({
               </motion.div>
             )}
           </AnimatePresence>
-          {!playing && currentTime === 0 && (
+          {countInBeat !== null ? (
+            <div className="start-cue count-in-cue" role="status" aria-live="assertive">
+              <span>Flow starts in</span>
+              <AnimatePresence mode="wait">
+                <motion.strong
+                  className="count-in-number"
+                  key={countInBeat}
+                  initial={{ opacity: 0, scale: .68, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 1.18, y: -8 }}
+                  transition={{ duration: .18, ease: 'easeOut' }}
+                >
+                  {countInBeat}
+                </motion.strong>
+              </AnimatePresence>
+              <small>{effectiveBpm} BPM</small>
+            </div>
+          ) : !playing && currentTime === 0 && (
             <div className="start-cue">
               <span>{mode === 'wait' ? 'The song waits for you' : 'Play in time with the notes'}</span>
               <strong>{targetNotes.size ? `Find ${Array.from(targetNotes).map(noteName).join(' + ')}` : 'Ready when you are'}</strong>
@@ -625,7 +715,7 @@ export function PracticeStudio({
           <span className="time-readout">{formatTime(currentTime)} <i /> {formatTime(song.duration)}</span>
           <div className="transport-controls">
             <button onClick={() => restart()} aria-label="Restart"><RotateCcw size={17} /></button>
-            <button className="play-control" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}</button>
+            <button className="play-control" onClick={togglePlay} aria-label={countInBeat !== null ? 'Cancel count-in' : playing ? 'Pause' : 'Play'}>{playing || countInBeat !== null ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}</button>
             <button onClick={() => setCurrentTime((time) => Math.min(song.duration, time + 5))} aria-label="Skip ahead"><RefreshCcw size={17} className="skip-icon" /></button>
           </div>
           <div className="transport-options">
@@ -694,8 +784,8 @@ export function PracticeStudio({
               <section className="setting-block">
                 <div className="setting-label"><span>Timeline mode</span><small>{mode === 'wait' ? 'Waits for each correct note' : 'Keeps moving in real time'}</small></div>
                 <div className="setting-choice" role="group" aria-label="Timeline mode">
-                  <button className={mode === 'wait' ? 'active' : ''} onClick={() => setMode('wait')}>Wait</button>
-                  <button className={mode === 'flow' ? 'active' : ''} onClick={() => setMode('flow')}>Flow</button>
+                  <button className={mode === 'wait' ? 'active' : ''} onClick={() => chooseMode('wait')}>Wait</button>
+                  <button className={mode === 'flow' ? 'active' : ''} onClick={() => chooseMode('flow')}>Flow</button>
                 </div>
               </section>
               <p><Headphones size={13} /> “Hear track first” previews without scoring. Backing track plays the arrangement alongside you.</p>

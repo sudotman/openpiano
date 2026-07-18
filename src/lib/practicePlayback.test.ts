@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FLOW_COUNT_IN_BEATS,
   MAX_PLAYBACK_RATE,
   MIN_PLAYBACK_RATE,
+  flowCountInIntervalMs,
   playbackBpm,
   playbackBpmBounds,
   playbackRateForBpm,
@@ -23,5 +25,19 @@ describe('practice playback tempo', () => {
     expect(playbackRateForBpm(120, 1)).toBe(MIN_PLAYBACK_RATE)
     expect(playbackRateForBpm(120, 999)).toBe(MAX_PLAYBACK_RATE)
     expect(playbackBpmBounds(120)).toEqual({ min: 30, max: 240 })
+  })
+})
+
+describe('Flow mode count-in', () => {
+  it('uses three readable, tempo-aware beats', () => {
+    expect(FLOW_COUNT_IN_BEATS).toBe(3)
+    expect(flowCountInIntervalMs(120)).toBe(500)
+    expect(flowCountInIntervalMs(60)).toBe(900)
+    expect(flowCountInIntervalMs(240)).toBe(450)
+  })
+
+  it('falls back safely for invalid tempos', () => {
+    expect(flowCountInIntervalMs(Number.NaN)).toBe(500)
+    expect(flowCountInIntervalMs(0)).toBe(500)
   })
 })
