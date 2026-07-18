@@ -32,6 +32,11 @@ import {
   type ProfileStorageDomain,
 } from './lib/localProfiles'
 import { importMidiFile } from './lib/midiImport'
+import {
+  DEFAULT_PRACTICE_PREFERENCES,
+  sanitizePracticePreferences,
+  type PracticePreferences,
+} from './lib/practiceSettings'
 import { DEFAULT_THEORY_PROGRESS, sanitizeTheoryProgress, type TheoryProgress } from './lib/theory'
 import type { Lesson, Song } from './types'
 
@@ -60,6 +65,7 @@ function practiceSummary(sessions: SessionRecord[]) {
 interface PracticeContext {
   song: Song
   lesson: Lesson | null
+  autoStart?: boolean
 }
 
 const DEFAULT_NAVIGATION: OpenPianoNavigation = { kind: 'view', view: 'learn' }
@@ -74,13 +80,14 @@ function initialNavigation(): OpenPianoNavigation {
 
 export default function App() {
   const synthRef = useRef<PianoSynth | null>(null)
+  const midiPlayThroughRef = useRef(false)
   if (!synthRef.current) synthRef.current = createPianoSynth({ volume: .34, maxPolyphony: 36 })
 
   const handleNoteOn = useCallback((event: MidiNoteEvent) => {
-    synthRef.current?.noteOn(event.note, event.velocity)
+    if (event.source === 'virtual' || midiPlayThroughRef.current) synthRef.current?.noteOn(event.note, event.velocity)
   }, [])
   const handleNoteOff = useCallback((event: MidiNoteEvent) => {
-    synthRef.current?.noteOff(event.note)
+    if (event.source === 'virtual' || midiPlayThroughRef.current) synthRef.current?.noteOff(event.note)
   }, [])
   const midi = useMidi({ onNoteOn: handleNoteOn, onNoteOff: handleNoteOff })
 
@@ -105,6 +112,8 @@ export default function App() {
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>(() => readProfileDomain(initialProfileId, 'lessons', []))
   const [sessions, setSessions] = useState<SessionRecord[]>(() => readProfileDomain(initialProfileId, 'sessions', []))
   const [keyboardConfig, setKeyboardConfig] = useState<KeyboardConfig>(() => sanitizeKeyboardConfig(readProfileDomain<Partial<KeyboardConfig> | null>(initialProfileId, 'settings', DEFAULT_KEYBOARD_CONFIG)))
+  const [practicePreferences, setPracticePreferences] = useState<PracticePreferences>(() => sanitizePracticePreferences(readProfileDomain<unknown>(initialProfileId, 'settings', DEFAULT_PRACTICE_PREFERENCES)))
+  midiPlayThroughRef.current = practicePreferences.midiPlayThrough
   const [theoryProgress, setTheoryProgress] = useState<TheoryProgress>(() => sanitizeTheoryProgress(readProfileDomain<unknown>(initialProfileId, 'theory', DEFAULT_THEORY_PROGRESS)))
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
@@ -184,6 +193,7 @@ export default function App() {
     setCompletedLessonIds(readProfileDomain(profileId, 'lessons', []))
     setSessions(readProfileDomain(profileId, 'sessions', []))
     setKeyboardConfig(sanitizeKeyboardConfig(readProfileDomain<Partial<KeyboardConfig> | null>(profileId, 'settings', DEFAULT_KEYBOARD_CONFIG)))
+    setPracticePreferences(sanitizePracticePreferences(readProfileDomain<unknown>(profileId, 'settings', DEFAULT_PRACTICE_PREFERENCES)))
     setTheoryProgress(sanitizeTheoryProgress(readProfileDomain<unknown>(profileId, 'theory', DEFAULT_THEORY_PROGRESS)))
     setImportError('')
     if (profileChanged) {
@@ -289,7 +299,7 @@ export default function App() {
     navigate({ kind: 'lesson', view: activeView, lessonId: lesson.id })
   }
 
-  function startPractice(song: Song, lesson: Lesson | null = null) {
+  function startPractice(song: Song, lesson: Lesson | null = null, autoStart = false) {
     // MIDI import starts practice in the same tick that it adds the new song to
     // React state, so retain the explicit object until the songbook rerenders.
     transientSongsRef.current.set(song.id, song)
@@ -299,6 +309,7 @@ export default function App() {
       songId: song.id,
       ...(lesson ? { lessonId: lesson.id } : {}),
     })
+    setPractice({ song, lesson, autoStart })
   }
 
   function resumeNextLesson() {
@@ -352,7 +363,31 @@ export default function App() {
   function handleKeyboardConfigChange(config: KeyboardConfig) {
     const next = sanitizeKeyboardConfig(config)
     setKeyboardConfig(next)
-    writeProfileDomain(profileState.activeProfileId, 'settings', next)
+    writeProfileDomain(profileState.activeProfileId, 'settings', { ...next, ...practicePreferences })
+  }
+
+  function handlePracticePreferencesChange(preferences: PracticePreferences) {
+    const next = sanitizePracticePreferences(preferences)
+    if (practicePreferences.midiPlayThrough && !next.midiPlayThrough) synthRef.current?.stopAll()
+    midiPlayThroughRef.current = next.midiPlayThrough
+    setPracticePreferences(next)
+    writeProfileDomain(profileState.activeProfileId, 'settings', { ...keyboardConfig, ...next })
+  }
+
+  function continueToNextLesson(currentLesson: Lesson) {
+    const currentIndex = lessons.findIndex((lesson) => lesson.id === currentLesson.id)
+    const nextLesson = currentIndex >= 0 ? lessons[currentIndex + 1] : undefined
+    const nextSong = nextLesson?.songId ? getSong(nextLesson.songId) : undefined
+
+    if (nextLesson && nextSong) {
+      startPractice(nextSong, nextLesson, true)
+      return
+    }
+    if (nextLesson) {
+      openLesson(nextLesson)
+      return
+    }
+    closeNavigation({ kind: 'view', view: activeView })
   }
 
   function handleTheoryProgress(nextProgress: TheoryProgress) {
@@ -413,10 +448,12 @@ export default function App() {
             selectedDeviceId={midi.selectedInputId || undefined}
             error={midi.error || undefined}
             keyboardConfig={keyboardConfig}
+            practicePreferences={practicePreferences}
             lastMidiNote={midi.lastEvent?.type === 'noteon' ? midi.lastEvent.note : undefined}
             onConnect={enableMidi}
             onSelectDevice={(id) => midi.selectInput(id)}
             onKeyboardConfigChange={handleKeyboardConfigChange}
+            onPracticePreferencesChange={handlePracticePreferencesChange}
           />
         )
       default:
@@ -428,14 +465,18 @@ export default function App() {
     <>
       {practice ? (
         <PracticeStudio
+          key={practice.lesson?.id ?? `song-${practice.song.id}`}
           song={practice.song}
           lesson={practice.lesson}
           midi={midi}
           onBack={() => closeNavigation({ kind: 'view', view: activeView })}
           onOpenMidi={() => setMidiDrawerOpen(true)}
           onComplete={handlePracticeComplete}
+          onNextLesson={continueToNextLesson}
           onResumeAudio={resumeAudio}
           keyboardConfig={keyboardConfig}
+          defaultTempoPercent={practicePreferences.defaultTempoPercent}
+          autoStart={practice.autoStart}
         />
       ) : (
         <AppShell

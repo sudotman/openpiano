@@ -18,7 +18,8 @@ import {
 } from 'lucide-react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UseMidiResult } from '../hooks/useMidi'
-import { resolvePracticeRange, type KeyboardConfig } from '../lib/keyboardConfig'
+import { formatMidiNote, resolvePracticeRange, type KeyboardConfig } from '../lib/keyboardConfig'
+import { getPracticeCompletionAction, type PracticeTempoPercent } from '../lib/practiceSettings'
 import type { Lesson, Song } from '../types'
 import { NoteHighway } from './NoteHighway'
 import { PianoKeyboard } from './PianoKeyboard'
@@ -45,8 +46,11 @@ interface PracticeStudioProps {
   onBack: () => void
   onOpenMidi: () => void
   onComplete: (result: PracticeResult) => void
+  onNextLesson: (lesson: Lesson) => void
   onResumeAudio: () => Promise<void>
   keyboardConfig: KeyboardConfig
+  defaultTempoPercent: PracticeTempoPercent
+  autoStart?: boolean
 }
 
 function formatTime(seconds: number) {
@@ -65,14 +69,17 @@ export function PracticeStudio({
   onBack,
   onOpenMidi,
   onComplete,
+  onNextLesson,
   onResumeAudio,
   keyboardConfig,
+  defaultTempoPercent,
+  autoStart = false,
 }: PracticeStudioProps) {
   const [mode, setMode] = useState<PracticeMode>('wait')
   const [handMode, setHandMode] = useState<HandMode>('both')
   const [visualMode, setVisualMode] = useState<VisualMode>('tiles')
-  const [speed, setSpeed] = useState(.75)
-  const [playing, setPlaying] = useState(false)
+  const [speed, setSpeed] = useState(defaultTempoPercent / 100)
+  const [playing, setPlaying] = useState(autoStart)
   const [currentTime, setCurrentTime] = useState(0)
   const [hitNotes, setHitNotes] = useState<Set<string>>(() => new Set())
   const [missedNotes, setMissedNotes] = useState<Set<string>>(() => new Set())
@@ -84,11 +91,14 @@ export function PracticeStudio({
   const [feedback, setFeedback] = useState<{ kind: 'right' | 'wrong'; label: string } | null>(null)
   const [showResults, setShowResults] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null)
+  const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(() => autoStart ? Date.now() : null)
   const hitRef = useRef(hitNotes)
   const missedRef = useRef(missedNotes)
   const completedRef = useRef(false)
   const lastEventRef = useRef<number | null>(null)
+  const lastResultEventRef = useRef(midi.lastEvent)
+  const armedResultShortcutRef = useRef<{ note: number; action: 'repeat' | 'next' } | null>(null)
+  const previousHandModeRef = useRef(handMode)
   const feedbackTimer = useRef<number | null>(null)
   const practiceNotes = useMemo(
     () => song.notes.filter((note) => handMode === 'both' || note.hand === handMode),
@@ -102,8 +112,8 @@ export function PracticeStudio({
   useEffect(() => { hitRef.current = hitNotes }, [hitNotes])
   useEffect(() => { missedRef.current = missedNotes }, [missedNotes])
 
-  const restart = useCallback(() => {
-    setPlaying(false)
+  const restart = useCallback((startImmediately = false) => {
+    setPlaying(startImmediately)
     setCurrentTime(0)
     setHitNotes(new Set())
     setMissedNotes(new Set())
@@ -114,15 +124,17 @@ export function PracticeStudio({
     setWrongCount(0)
     setFeedback(null)
     setShowResults(false)
-    setSessionStartedAt(null)
+    setSessionStartedAt(startImmediately ? Date.now() : null)
     hitRef.current = new Set()
     missedRef.current = new Set()
     completedRef.current = false
   }, [])
 
   useEffect(() => {
+    if (previousHandModeRef.current === handMode) return
+    previousHandModeRef.current = handMode
     restart()
-  }, [handMode, restart, song.id])
+  }, [handMode, restart])
 
   useEffect(() => {
     if (!playing) return
@@ -174,7 +186,8 @@ export function PracticeStudio({
       missedRef.current = next
       return next
     })
-    window.setTimeout(() => setShowResults(true), 380)
+    const resultTimer = window.setTimeout(() => setShowResults(true), 380)
+    return () => window.clearTimeout(resultTimer)
   }, [currentTime, practiceNotes, sessionStartedAt, song.duration])
 
   useEffect(() => {
@@ -258,8 +271,45 @@ export function PracticeStudio({
       duration: sessionMinutes,
       lessonId: lesson?.id,
     })
-    onBack()
+    if (lesson) onNextLesson(lesson)
+    else onBack()
   }
+
+  useEffect(() => {
+    const event = midi.lastEvent
+    if (!event || event === lastResultEventRef.current) return
+    lastResultEventRef.current = event
+
+    if (!showResults || event.source !== 'midi') {
+      armedResultShortcutRef.current = null
+      return
+    }
+
+    const action = getPracticeCompletionAction(
+      event.note,
+      keyboardConfig.startMidi,
+      keyboardConfig.endMidi,
+    )
+
+    if (event.type === 'noteon') {
+      armedResultShortcutRef.current = action ? { note: event.note, action } : null
+      return
+    }
+
+    const armed = armedResultShortcutRef.current
+    if (!armed || armed.note !== event.note) return
+    armedResultShortcutRef.current = null
+
+    if (armed.action === 'repeat') {
+      void onResumeAudio().catch(() => undefined)
+      restart(true)
+      return
+    }
+    finishSession()
+  // finishSession intentionally represents the current score when the result
+  // key is released; the MIDI event identity prevents replay on rerenders.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyboardConfig.endMidi, keyboardConfig.startMidi, midi.lastEvent, onResumeAudio, restart, showResults])
 
   return (
     <div className="practice-studio">
@@ -356,7 +406,7 @@ export function PracticeStudio({
         <div className="transport-bar">
           <span className="time-readout">{formatTime(currentTime)} <i /> {formatTime(song.duration)}</span>
           <div className="transport-controls">
-            <button onClick={restart} aria-label="Restart"><RotateCcw size={17} /></button>
+            <button onClick={() => restart()} aria-label="Restart"><RotateCcw size={17} /></button>
             <button className="play-control" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}</button>
             <button onClick={() => setCurrentTime((time) => Math.min(song.duration, time + 5))} aria-label="Skip ahead"><RefreshCcw size={17} className="skip-icon" /></button>
           </div>
@@ -388,7 +438,14 @@ export function PracticeStudio({
                 <div><strong>{hitNotes.size}</strong><span>notes hit</span></div>
                 <div><strong>{bestStreak}</strong><span>best streak</span></div>
               </div>
-              <div className="result-actions"><button onClick={restart}>Practice again</button><button className="primary-action" onClick={finishSession}>Continue <ArrowLeft size={16} className="continue-arrow" /></button></div>
+              {midi.isConnected && (
+                <div className="result-midi-shortcuts">
+                  <span><kbd>{formatMidiNote(keyboardConfig.startMidi, keyboardConfig.noteNaming)}</kbd> Repeat</span>
+                  <i />
+                  <span><kbd>{formatMidiNote(keyboardConfig.endMidi, keyboardConfig.noteNaming)}</kbd> {lesson ? 'Next lesson' : 'Finish'}</span>
+                </div>
+              )}
+              <div className="result-actions"><button onClick={() => restart()}>Practice again</button><button className="primary-action" onClick={finishSession}>{lesson ? 'Next lesson' : 'Finish'} <ArrowLeft size={16} className="continue-arrow" /></button></div>
             </motion.section>
           </motion.div>
         )}

@@ -95,6 +95,10 @@
 .result-metrics span { color: #707870; font-size: 8px; text-transform: uppercase; letter-spacing: .7px; }
 .result-actions { display: flex; gap: 9px; }
 .result-actions > button:first-child { height: 46px; padding: 0 17px; border: 1px solid var(--studio-line); border-radius: 7px; background: transparent; color: #b0b6af; font-size: 10px; cursor: pointer; }
+.result-midi-shortcuts { display: flex; align-items: center; gap: 10px; margin: -10px 0 21px; color: #858d85; font-size: 8px; text-transform: uppercase; letter-spacing: .7px; }
+.result-midi-shortcuts span { display: flex; align-items: center; gap: 6px; }
+.result-midi-shortcuts kbd { min-width: 31px; padding: 4px 6px; border: 1px solid rgba(255,255,255,.16); border-bottom-width: 2px; border-radius: 4px; background: #222722; color: #d9ff5b; font: 700 8px ui-monospace, monospace; }
+.result-midi-shortcuts i { width: 2px; height: 2px; border-radius: 50%; background: #555d55; }
 .continue-arrow { transform: rotate(180deg); }
 
 @media (max-width: 720px) {

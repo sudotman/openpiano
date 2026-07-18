@@ -1,6 +1,11 @@
 import { motion } from 'framer-motion'
-import { Cable, Check, ChevronDown, Music, SlidersHorizontal, Volume2 } from 'lucide-react'
-import type { KeyboardConfig } from '../lib/keyboardConfig'
+import { Cable, Check, ChevronDown, Gauge, Music, RotateCcw, SlidersHorizontal, Volume2 } from 'lucide-react'
+import { formatMidiNote, type KeyboardConfig } from '../lib/keyboardConfig'
+import {
+  PRACTICE_TEMPO_OPTIONS,
+  type PracticePreferences,
+  type PracticeTempoPercent,
+} from '../lib/practiceSettings'
 import { KeyboardRangeSetup } from './KeyboardRangeSetup'
 
 interface MidiDevice {
@@ -18,10 +23,12 @@ interface SetupViewProps {
   selectedDeviceId?: string
   error?: string
   keyboardConfig: KeyboardConfig
+  practicePreferences: PracticePreferences
   lastMidiNote?: number
   onConnect: () => void
   onSelectDevice: (id: string) => void
   onKeyboardConfigChange: (config: KeyboardConfig) => void
+  onPracticePreferencesChange: (preferences: PracticePreferences) => void
 }
 
 export function SetupView({
@@ -32,10 +39,12 @@ export function SetupView({
   selectedDeviceId,
   error,
   keyboardConfig,
+  practicePreferences,
   lastMidiNote,
   onConnect,
   onSelectDevice,
   onKeyboardConfigChange,
+  onPracticePreferencesChange,
 }: SetupViewProps) {
   return (
     <motion.div className="setup-view" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -90,9 +99,40 @@ export function SetupView({
         <div className="setup-section-heading"><span>Practice preferences</span><h3>Make the studio yours</h3></div>
         <div className="preference-list">
           <label className="preference-row">
+            <span className="preference-icon"><Gauge size={18} /></span>
+            <span><strong>Default tempo</strong><small>The starting speed for every new song or lesson</small></span>
+            <select
+              className="preference-select"
+              aria-label="Default practice tempo"
+              value={practicePreferences.defaultTempoPercent}
+              onChange={(event) => onPracticePreferencesChange({
+                ...practicePreferences,
+                defaultTempoPercent: Number(event.target.value) as PracticeTempoPercent,
+              })}
+            >
+              {PRACTICE_TEMPO_OPTIONS.map((tempo) => <option key={tempo} value={tempo}>{tempo}%</option>)}
+            </select>
+          </label>
+          <div className="preference-row preference-row-static">
+            <span className="preference-icon"><RotateCcw size={18} /></span>
+            <span><strong>MIDI result shortcuts</strong><small>After a song, press and release an outer key—no mouse needed</small></span>
+            <span className="midi-shortcut-keys">
+              <span><kbd>{formatMidiNote(keyboardConfig.startMidi, keyboardConfig.noteNaming)}</kbd><small>Repeat</small></span>
+              <span><kbd>{formatMidiNote(keyboardConfig.endMidi, keyboardConfig.noteNaming)}</kbd><small>Next</small></span>
+            </span>
+          </div>
+          <label className="preference-row">
             <span className="preference-icon"><Volume2 size={18} /></span>
-            <span><strong>Key sound</strong><small>Hear a soft piano tone as you play</small></span>
-            <input type="checkbox" defaultChecked /><i className="toggle" />
+            <span><strong>Browser play-through</strong><small>Hear OpenPiano’s software piano while playing MIDI keys</small></span>
+            <input
+              type="checkbox"
+              checked={practicePreferences.midiPlayThrough}
+              onChange={(event) => onPracticePreferencesChange({
+                ...practicePreferences,
+                midiPlayThrough: event.target.checked,
+              })}
+            />
+            <i className="toggle" />
           </label>
           <label className="preference-row">
             <span className="preference-icon"><Music size={18} /></span>
