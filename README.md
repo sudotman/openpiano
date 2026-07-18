@@ -8,13 +8,15 @@ OpenPiano is a browser-based piano teacher built around real MIDI input. It comb
 - 14 playable original, traditional, and public-domain arrangements with right- and left-hand parts
 - Falling-note practice aligned precisely to a responsive piano keyboard
 - Three practice views: falling tiles, standard grand-staff notation, or both together
+- Full-track listen-through before practice, plus an optional synthesized backing track while playing
+- Explicit BPM control with 50% / 75% / 100% shortcuts and a toggleable tempo-synced metronome
 - **Wait mode**, which holds the timeline until every required note in a chord is played
 - **Flow mode**, with live timing, misses, accuracy, and streak scoring
 - Live Web MIDI note-on/note-off input, velocity tracking, hot-plug detection, remembered device selection, and automatic reconnection after the first approval
 - On-screen playable keys for trying every interaction without hardware
-- Piano-like Web Audio feedback with polyphony
+- A warmer modeled piano voice with hammer attack, inharmonic string partials, stereo keyboard placement, natural decay, and subtle room resonance
 - MIDI file import with track selection, metadata cleanup, hand inference, and clear validation errors
-- A Yamaha PSR-E383 preset (61 keys, Yamaha C1–C6), common 49/76/88-key presets, custom endpoints, two-note MIDI calibration, and selectable Yamaha C3 / Scientific C4 octave labels
+- Because this is my main keyboard, A Yamaha PSR-E383 preset (61 keys, Yamaha C1–C6), common 49/76/88-key presets, custom endpoints, two-note MIDI calibration, and selectable Yamaha C3 / Scientific C4 octave labels
 - Password-free local learner profiles with separate songs, lesson progress, settings, theory scores, practice history, switching, renaming, and non-destructive logout
 - A six-part interactive Theory Lab for keyboard geography, chromatic staff reading, pulse training, scales, intervals, triads, inversions, and harmonic function
 - Browser Back navigation that stays inside OpenPiano across views, lesson sheets, and practice sessions so an active MIDI connection is not discarded
@@ -39,7 +41,7 @@ npm run dev:restart
 
 For Web MIDI, use a current Chromium-based browser such as Chrome or Edge. Web MIDI requires localhost or another secure context. The browser must ask once before any site can access MIDI; after approval, OpenPiano restores the remembered keyboard automatically.
 
-## Connect a Yamaha PSR-E383
+## Connect a Yamaha PSR-E383 (again, because I own this keyboard but should be the same for any other MIDI device)
 
 1. Connect the keyboard's **USB TO HOST** port to the computer.
 2. Turn the keyboard on.
@@ -55,7 +57,7 @@ The app responds to standard MIDI note-on and note-off messages. No MIDI connect
 
 Open **Songs**, press **Import MIDI**, and choose a `.mid` or `.midi` file. OpenPiano selects useful pitched/piano tracks, ignores percussion, normalizes the start time, and opens the imported arrangement directly in the practice studio.
 
-Inside the studio, switch between **Tiles**, **Score**, and **Both** without restarting the session. Imported MIDI is quantized into readable grand-staff notation automatically; tiles mode remains available if an unusual file cannot be engraved.
+Inside the studio, choose **Hear track first** for a no-scoring preview, or enable **Backing track** to hear the arrangement while you play. The tempo panel shows both the song's original BPM and the current playback BPM, keeps the 50% / 75% / 100% shortcuts, and includes a toggleable metronome. You can also switch between **Tiles**, **Score**, and **Both** without restarting the session. Imported MIDI is quantized into readable grand-staff notation automatically; tiles mode remains available if an unusual file cannot be engraved.
 
 ## Local learner profiles
 
@@ -88,8 +90,8 @@ The deployment uses GitHub's `github-pages` environment and official Pages artif
 
 - `src/hooks/useMidi.ts` — Web MIDI permissions, devices, and live note state
 - `src/lib/midiImport.ts` — safe MIDI parsing and OpenPiano song conversion
-- `src/lib/audio.ts` — lightweight polyphonic piano synth
-- `src/components/PracticeStudio.tsx` — timing, wait/flow modes, scoring, and results
+- `src/lib/audio.ts` — polyphonic modeled-piano synth and room response
+- `src/components/PracticeStudio.tsx` — track playback, metronome, tempo, wait/flow modes, scoring, and results
 - `src/components/NoteHighway.tsx` — aligned falling-note renderer
 - `src/components/PianoKeyboard.tsx` — accurate interactive key geometry
 - `src/components/SheetMusic.tsx` — live VexFlow grand staff, playhead, and note-result coloring

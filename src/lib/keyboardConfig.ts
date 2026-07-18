@@ -70,7 +70,7 @@ export const YAMAHA_PSR_E383_PRESET = Object.freeze({
   startMidi: 36,
   endMidi: 96,
   keyCount: 61,
-  recommended: true,
+  recommended: false,
 } satisfies KeyboardPreset)
 
 export const KEYBOARD_49_PRESET = Object.freeze({

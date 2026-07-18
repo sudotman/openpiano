@@ -33,7 +33,7 @@ export function MidiDrawer({ open, midi, noteNaming, onClose, onEnable }: MidiDr
 
             {!midi.hasAccess ? (
               <div className="midi-steps">
-                <div><span><Usb size={17} /></span><p><strong>1. Plug in</strong>Connect the Yamaha PSR-E383’s USB TO HOST port to your computer.</p></div>
+                <div><span><Usb size={17} /></span><p><strong>1. Plug in</strong>Connect the MIDI keyboard USB TO HOST port to your computer.</p></div>
                 <div><span><Zap size={17} /></span><p><strong>2. Power on</strong>Turn on the keyboard before enabling access.</p></div>
                 <div><span><Cable size={17} /></span><p><strong>3. Allow MIDI</strong>Your browser will ask once for permission.</p></div>
                 <button className="primary-action full" onClick={onEnable} disabled={midi.status === 'requesting' || !midi.isSupported}>
